@@ -1,0 +1,6 @@
+discord.py==2.3.2
+fastapi==0.111.0
+motor==3.4.0
+pydantic-settings==2.2.1
+python-dotenv==1.0.1
+uvicorn[standard]==0.29.0
