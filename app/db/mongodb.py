@@ -10,7 +10,7 @@ async def get_database() -> AsyncIOMotorDatabase:
 
     settings = get_settings()
     if _client is None:
-        _client = AsyncIOMotorClient(settings.mongodb_connection_uri)
+        _client = AsyncIOMotorClient(settings.mongodb_uri)
 
     return _client[settings.mongodb_database]
 
