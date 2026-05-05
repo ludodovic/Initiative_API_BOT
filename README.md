@@ -38,7 +38,7 @@ python -m app.bot.main
 
 ## Bot Usage
 
-The bot currently exposes one admin command:
+The bot registration command is reserved for members with the `Conseil` role:
 
 ```text
 !register_message #channel Your registration message here
@@ -64,6 +64,31 @@ https://initiative-kourial.fr?token=TOKEN_GENERATED
 ```
 
 The bot needs Discord member and message content intents enabled in the Discord Developer Portal.
+
+Configure the success validation channel:
+
+```text
+!set_validation_channel #channel
+```
+
+Declare a completed success with a prefix command:
+
+```text
+!succes Success name or number @member @member
+!succes_accompli Success name or number @member @member
+```
+
+The command author is always included automatically. Success names with spaces are supported. If the success is not given as a number, the bot uses fuzzy name matching against the `succes` collection and posts the canonical success name in the validation entry.
+
+Users can also use the visible Discord slash command:
+
+```text
+/succes_accompli
+```
+
+Set `DISCORD_GUILD_ID` in `.env` to your server id if you want this slash command to appear quickly during deployment. If it is left as `0`, Discord global command sync can take longer.
+
+The bot creates one pending validation message per user in the configured validation channel. Members with the `Conseil` role can approve with the green check reaction or refuse with the red cross reaction. Approved validations add the success id to the user's `achievement` list.
 
 ## Run Both in One Process
 
