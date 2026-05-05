@@ -78,7 +78,7 @@ Declare a completed success with a prefix command:
 !succes_accompli Success name or number @member @member
 ```
 
-The command author is always included automatically. Success names with spaces are supported. If the success is not given as a number, the bot uses fuzzy name matching against the `succes` collection and posts the canonical success name in the validation entry.
+The command author is always included automatically. Success names with spaces are supported. If the success is given as a number, the bot searches `catList[].id`. Otherwise, it resolves the typed text against the configured success-name list, then searches `catList[].name`. Category names are not used as command input.
 
 Users can also use the visible Discord slash command:
 

@@ -18,15 +18,19 @@ async def get_unlocked_successes(token: str | None) -> dict[str, Any]:
     if not isinstance(achievement_ids, list) or not achievement_ids:
         return EMPTY_PROGRESS
 
-    successes = database["succes"].find({"id": {"$in": achievement_ids}}).sort("id", 1)
+    successes = database["succes"].find({"catList.id": {"$in": achievement_ids}})
     unlocked_list: list[str] = []
     total_points = 0
 
-    async for success in successes:
-        name = success.get("name")
-        if isinstance(name, str):
-            unlocked_list.append(name)
-        total_points += int(success.get("points", 0))
+    async for category in successes:
+        for success in category.get("catList", []):
+            if success.get("id") not in achievement_ids:
+                continue
+
+            name = success.get("name")
+            if isinstance(name, str):
+                unlocked_list.append(name)
+            total_points += int(success.get("value", 0))
 
     return {
         "unlockedList": unlocked_list,

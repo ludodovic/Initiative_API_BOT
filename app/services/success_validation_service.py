@@ -1,4 +1,3 @@
-from difflib import SequenceMatcher
 from typing import Any
 
 from app.db import get_database
@@ -7,6 +6,85 @@ CONFIG_COLLECTION = "bot_config"
 SUCCESS_COLLECTION = "succes"
 VALIDATION_COLLECTION = "success_validations"
 USER_COLLECTION = "users"
+
+SUCCES_LIST = ["Harcèlement moral",
+"Et ça fait bim bam boum",
+"Décalage horaire",
+"La hateuse originelle",
+"Zone d'inconfort",
+"L'inventeur",
+"Petit ange parti trop tôt",
+"Ils sont trop nombreux",
+"Droit dans le mur",
+"Pokédex complet",
+"Il court vite le coquin",
+"C'est qui çui-là ?",
+"Petite joueuse",
+"Il est timide",
+"Il a peut-être trop mangé ?",
+"Il fait un peu frais là non ?",
+"Quitte ou double",
+"Plus là le bambou",
+"Accro aux réseaux sociaux",
+# "100% de présence",
+"Célébrité",
+"Aligné",
+"First !",
+"Je sais ce que je veux",
+"Amasseur de guildatons",
+"Missionné",
+"Onzième position du Kamasutra",
+"Il y a toujours un plus gros poisson",
+"Speedrunner",
+"Une fine équipe",
+"Chamailleries",
+"Compétition amicale",
+"Tu l'as bien mérité",
+"Long live the King",
+"Humiliation",
+"Mutinerie",
+"Pardon j'ai cru que c'était un bot",
+"L'important c'est de participer",
+"C'est la fête",
+"Jure c'est pas des bots ?",
+"De très bons amis",
+"Généreux",
+"Ça existe ce truc ?",
+"Un engrais de qualité",
+"Le grand remplacement",
+"Membre exemplaire",
+"Heures supp'",
+"Membre actif",
+"Recruteur",
+"Ça enchaîne !",
+"PGM",
+"Complètement dérangés",
+"Les naturistes",
+"Justiciers gantés",
+"Tema la taille du rat",
+"Talon d'Achille",
+"Je sais pas qui c'est mais je prends les points",
+"Point faible : trop fort",
+"Apprenti soloteur",
+"La meilleure défense, c'est l'attaque !",
+"La prochaine sera meilleure",
+"Sacré duo",
+"TGIF",
+"Une simple formalité",
+"Les petits aussi",
+"Expédition Club Med",
+"Songe d'une nuit d'été",
+"Unique en son genre",
+"L'anomalie, c'est nous",
+"Et tout le tralala",
+"La chatte qu'il a !!!",
+"Drop \"rare\"",
+"Plus que des camarades de guilde",
+"J'apporte les œufs et toi le sucre",
+"Il joue quelle classe celui là déjà ?",
+"Flashmob",
+"Une bonne petite communauté",
+"Grande famille"]
 
 
 async def set_validation_channel(guild_id: int, channel_id: int) -> None:
@@ -32,35 +110,54 @@ async def find_success(success_reference: str) -> dict[str, Any] | None:
     database = await get_database()
 
     if success_reference.isdigit():
-        success = await database[SUCCESS_COLLECTION].find_one({"id": int(success_reference)})
-        return _serialize(success) if success else None
+        success_id = int(success_reference)
+        category = await database[SUCCESS_COLLECTION].find_one({"catList.id": success_id})
+        return _find_success_in_category_by_id(category, success_id) if category else None
 
-    normalized_reference = _normalize_success_name(success_reference)
-    cursor = database[SUCCESS_COLLECTION].find({})
-    best_success: dict[str, Any] | None = None
-    best_score = 0.0
-
-    async for success in cursor:
-        success_name = success.get("name")
-        if not isinstance(success_name, str):
-            continue
-
-        normalized_name = _normalize_success_name(success_name)
-        if normalized_name == normalized_reference:
-            return _serialize(success)
-
-        score = SequenceMatcher(None, normalized_reference, normalized_name).ratio()
-        if normalized_reference in normalized_name or normalized_name in normalized_reference:
-            score += 0.15
-
-        if score > best_score:
-            best_score = score
-            best_success = success
-
-    if best_success is None or best_score < 0.6:
+    success_name = _find_success_name_from_list(success_reference)
+    if success_name is None:
         return None
 
-    return _serialize(best_success)
+    category = await database[SUCCESS_COLLECTION].find_one({"catList.name": success_name})
+    return _find_success_in_category_by_name(category, success_name) if category else None
+
+
+def _find_success_name_from_list(success_reference: str) -> str | None:
+    normalized_reference = _normalize_success_name(success_reference)
+    normalized_names = {
+        _normalize_success_name(success_name): success_name
+        for success_name in SUCCES_LIST
+    }
+
+    if normalized_reference in normalized_names:
+        return normalized_names[normalized_reference]
+
+    for normalized_name, success_name in normalized_names.items():
+        if normalized_name.startswith(normalized_reference):
+            return success_name
+
+    for normalized_name, success_name in normalized_names.items():
+        if normalized_reference in normalized_name:
+            return success_name
+
+    reference_tokens = set(normalized_reference.split())
+    if not reference_tokens:
+        return None
+
+    best_name: str | None = None
+    best_score = 0.0
+    for normalized_name, success_name in normalized_names.items():
+        name_tokens = set(normalized_name.split())
+        common_tokens = reference_tokens & name_tokens
+        if not common_tokens:
+            continue
+
+        score = len(common_tokens) / len(reference_tokens | name_tokens)
+        if score > best_score:
+            best_score = score
+            best_name = success_name
+
+    return best_name if best_score >= 0.5 else None
 
 
 async def create_validation_request(
@@ -128,6 +225,36 @@ async def refuse_validation(message_id: int) -> dict[str, Any] | None:
 
 def _serialize(document: dict[str, Any]) -> dict[str, Any]:
     return {key: value for key, value in document.items() if key != "_id"}
+
+
+def _find_success_in_category_by_id(
+    category: dict[str, Any],
+    success_id: int,
+) -> dict[str, Any] | None:
+    for success in category.get("catList", []):
+        if success.get("id") == success_id:
+            return _serialize_success(success)
+    return None
+
+
+def _find_success_in_category_by_name(
+    category: dict[str, Any],
+    success_name: str,
+) -> dict[str, Any] | None:
+    for success in category.get("catList", []):
+        if success.get("name") == success_name:
+            return _serialize_success(success)
+    return None
+
+
+def _serialize_success(success: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "id": success["id"],
+        "name": success["name"],
+        "value": success.get("value", 0),
+        "icon": success.get("icon", ""),
+        "desc": success.get("desc", ""),
+    }
 
 
 def _normalize_success_name(value: str) -> str:
