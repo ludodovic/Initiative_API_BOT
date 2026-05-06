@@ -102,6 +102,7 @@ The API exposes only the frontend routes used by the Angular app:
 
 - `GET /api/succes/unlock`
 - `GET /api/succes`
+- `POST /api/succes/claim`
 - `GET /api/news/calendar`
 - `GET /api/news/letter`
 
@@ -122,3 +123,13 @@ If the token is missing or invalid, the API returns:
 
 Success progress is computed from the authenticated user's `achievement` ids and the matching documents in the `succes` collection. Calendar events are read from `events`, and the latest newsletter is read from `newsletter`.
 `GET /api/succes` returns the full `succes` collection without MongoDB `_id` fields.
+
+`POST /api/succes/claim` is authenticated with `Authorization: Bearer TOKEN` and accepts `multipart/form-data`:
+
+- `successId`
+- `successName`
+- `successDescription`
+- `description`
+- `images`
+
+The API accepts PNG and JPG/JPEG images, keeps only the first 3 images, resizes them to a reasonable size, stores the claim in MongoDB, and posts the validation request with image attachments in the configured Discord validation channel. This route requires running API and bot together with `python -m app.main`, and `DISCORD_GUILD_ID` must be set.

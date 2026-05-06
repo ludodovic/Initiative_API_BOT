@@ -2,7 +2,9 @@ audioop-lts==0.2.1; python_version >= "3.13"
 discord.py==2.3.2
 fastapi==0.111.0
 motor==3.7.1
+Pillow==10.4.0
 pymongo==4.10.1
 pydantic-settings==2.2.1
+python-multipart==0.0.9
 python-dotenv==1.0.1
 uvicorn[standard]==0.29.0

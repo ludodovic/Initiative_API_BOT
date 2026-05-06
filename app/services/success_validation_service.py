@@ -169,6 +169,8 @@ async def create_validation_request(
     member_display_name: str,
     success_id: int,
     success_name: str,
+    claim_id: str | None = None,
+    proof_image_paths: list[str] | None = None,
 ) -> None:
     database = await get_database()
     await database[VALIDATION_COLLECTION].insert_one(
@@ -181,6 +183,8 @@ async def create_validation_request(
             "member_display_name": member_display_name,
             "success_id": success_id,
             "success_name": success_name,
+            "claim_id": claim_id,
+            "proof_image_paths": proof_image_paths or [],
             "status": "pending",
         }
     )

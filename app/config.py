@@ -18,6 +18,7 @@ class Settings(BaseSettings):
         default="https://initiative-kourial.fr",
         alias="REGISTRATION_URL",
     )
+    claim_upload_dir: str = Field(default="uploads/claims", alias="CLAIM_UPLOAD_DIR")
     api_host: str = Field(default="127.0.0.1", alias="API_HOST")
     api_port: int = Field(default=8000, alias="API_PORT")
 

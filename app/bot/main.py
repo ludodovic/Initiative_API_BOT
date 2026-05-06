@@ -7,6 +7,7 @@ from discord.ext import commands
 
 from app.config import get_settings
 from app.db import close_mongo_client
+from app.bot.runtime import set_bot
 from app.services.success_validation_service import (
     approve_validation,
     create_validation_request,
@@ -34,6 +35,7 @@ def build_bot() -> commands.Bot:
     intents.members = True
     intents.reactions = True
     bot = commands.Bot(command_prefix=settings.discord_command_prefix, intents=intents)
+    set_bot(bot)
     slash_commands_synced = False
 
     @bot.event
