@@ -3,7 +3,12 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Header
 
 from app.db import close_mongo_client
-from app.services import get_calendar_events, get_latest_newsletter, get_unlocked_successes
+from app.services import (
+    get_calendar_events,
+    get_latest_newsletter,
+    get_success_catalog,
+    get_unlocked_successes,
+)
 
 
 @asynccontextmanager
@@ -23,6 +28,11 @@ app = FastAPI(
 @app.get("/api/succes/unlock")
 async def api_unlocked_successes(authorization: str | None = Header(default=None)) -> dict:
     return await get_unlocked_successes(_extract_bearer_token(authorization))
+
+
+@app.get("/api/succes")
+async def api_success_catalog() -> list[dict]:
+    return await get_success_catalog()
 
 
 @app.get("/api/news/calendar")

@@ -5,6 +5,12 @@ from app.db import get_database
 EMPTY_PROGRESS = {"unlockedList": [], "totalPoints": 0}
 
 
+async def get_success_catalog() -> list[dict[str, Any]]:
+    database = await get_database()
+    cursor = database["succes"].find({}, {"_id": 0}).sort("id", 1)
+    return [category async for category in cursor]
+
+
 async def get_unlocked_successes(token: str | None) -> dict[str, Any]:
     if not token:
         return EMPTY_PROGRESS

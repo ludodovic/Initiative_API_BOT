@@ -1,6 +1,7 @@
 from app.services.frontend_api_service import (
     get_calendar_events,
     get_latest_newsletter,
+    get_success_catalog,
     get_unlocked_successes,
 )
 from app.services.success_validation_service import (
@@ -21,6 +22,7 @@ __all__ = [
     "find_success",
     "get_calendar_events",
     "get_latest_newsletter",
+    "get_success_catalog",
     "get_unlocked_successes",
     "get_validation_channel",
     "get_validation_request",

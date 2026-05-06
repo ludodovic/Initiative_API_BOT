@@ -101,6 +101,7 @@ python -m app.main
 The API exposes only the frontend routes used by the Angular app:
 
 - `GET /api/succes/unlock`
+- `GET /api/succes`
 - `GET /api/news/calendar`
 - `GET /api/news/letter`
 
@@ -120,3 +121,4 @@ If the token is missing or invalid, the API returns:
 ```
 
 Success progress is computed from the authenticated user's `achievement` ids and the matching documents in the `succes` collection. Calendar events are read from `events`, and the latest newsletter is read from `newsletter`.
+`GET /api/succes` returns the full `succes` collection without MongoDB `_id` fields.
