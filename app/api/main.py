@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+import logging
 
 from fastapi import FastAPI, File, Form, Header, UploadFile, status
 from fastapi.responses import JSONResponse
@@ -23,6 +24,7 @@ async def lifespan(_: FastAPI):
     yield
     await close_mongo_client()
 
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="Initiative API",
@@ -91,7 +93,8 @@ async def api_claim_success(
             raise RuntimeError("Discord bot is not running in this process.")
 
         await post_success_claim_for_validation(bot, claim)
-    except Exception:
+    except Exception as e:
+        logger.info(f"Error occurred while creating claim: {e}")
         return _json_error(status.HTTP_500_INTERNAL_SERVER_ERROR, "Unable to create claim")
 
     return JSONResponse(
