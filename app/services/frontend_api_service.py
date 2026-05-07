@@ -11,6 +11,39 @@ async def get_success_catalog() -> list[dict[str, Any]]:
     return [category async for category in cursor]
 
 
+async def get_success_leaderboard() -> list[dict[str, Any]]:
+    database = await get_database()
+    users = database["users"].find(
+        {},
+        {
+            "_id": 0,
+            "dofus_username": 1,
+            "token": 1,
+        },
+    ).sort("dofus_username", 1)
+    leaderboard: list[dict[str, Any]] = []
+
+    async for user in users:
+        progress = await get_unlocked_successes(user.get("token"))
+
+        leaderboard.append(
+            {
+                "dofus_username": str(user.get("dofus_username", "")),
+                "totalPoints": progress["totalPoints"],
+                "successCount": len(progress["unlockedList"]),
+            }
+        )
+
+    return sorted(
+        leaderboard,
+        key=lambda player: (
+            -player["totalPoints"],
+            -player["successCount"],
+            player["dofus_username"].casefold(),
+        ),
+    )
+
+
 async def get_unlocked_successes(token: str | None) -> dict[str, Any]:
     if not token:
         return EMPTY_PROGRESS
@@ -78,3 +111,4 @@ async def get_latest_newsletter() -> dict[str, str]:
         "title": str(newsletter.get("title", "")),
         "content": str(newsletter.get("content", "")),
     }
+
