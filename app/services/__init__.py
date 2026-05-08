@@ -5,7 +5,7 @@ from app.services.frontend_api_service import (
     get_success_leaderboard,
     get_unlocked_successes,
 )
-from app.services.claim_service import create_success_claim, get_user_by_token
+from app.services.claim_service import create_success_claim
 from app.services.success_validation_service import (
     approve_validation,
     create_validation_request,
@@ -16,6 +16,7 @@ from app.services.success_validation_service import (
     set_validation_channel,
 )
 from app.services.user_registration_service import create_registered_user
+from app.services.user_service import get_user_by_token, get_user_profile, update_user_class
 
 __all__ = [
     "approve_validation",
@@ -29,8 +30,10 @@ __all__ = [
     "get_success_leaderboard",
     "get_unlocked_successes",
     "get_user_by_token",
+    "get_user_profile",
     "get_validation_channel",
     "get_validation_request",
     "refuse_validation",
     "set_validation_channel",
+    "update_user_class",
 ]

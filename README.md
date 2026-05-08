@@ -104,6 +104,8 @@ The API exposes only the frontend routes used by the Angular app:
 - `GET /api/succes`
 - `GET /api/succes/leaderboard`
 - `POST /api/succes/claim`
+- `GET /api/user`
+- `POST /api/user/class`
 - `GET /api/news/calendar`
 - `GET /api/news/letter`
 
@@ -135,3 +137,13 @@ Success progress is computed from the authenticated user's `achievement` ids and
 - `images`
 
 The API accepts PNG and JPG/JPEG images, keeps only the first 3 images, resizes them to a reasonable size, stores the claim in MongoDB, and posts the validation request with image attachments in the configured Discord validation channel. This route requires running API and bot together with `python -m app.main`, and `DISCORD_GUILD_ID` must be set.
+
+`GET /api/user` returns the authenticated user's `dofus_username` and `class`. If `class` is missing in MongoDB, the response value is `"undefined"`.
+
+`POST /api/user/class` updates the authenticated user's `class` field. The request body is JSON:
+
+```json
+{
+  "class": "Cra"
+}
+```

@@ -1,7 +1,9 @@
 from contextlib import asynccontextmanager
 import logging
 
-from fastapi import FastAPI, File, Form, Header, UploadFile, status
+from typing import Any
+
+from fastapi import Body, FastAPI, File, Form, Header, UploadFile, status
 from fastapi.responses import JSONResponse
 
 from app.bot.claim_messages import post_success_claim_for_validation
@@ -15,6 +17,8 @@ from app.services import (
     get_success_leaderboard,
     get_unlocked_successes,
     get_user_by_token,
+    get_user_profile,
+    update_user_class,
 )
 from app.services.claim_service import validate_image_content_types
 from app.services.success_validation_service import find_success
@@ -48,6 +52,31 @@ async def api_success_catalog() -> list[dict]:
 @app.get("/api/succes/leaderboard")
 async def api_success_leaderboard() -> list[dict]:
     return await get_success_leaderboard()
+
+
+@app.get("/api/user")
+async def api_user(authorization: str | None = Header(default=None)) -> JSONResponse:
+    user = await get_user_profile(_extract_bearer_token(authorization))
+    if user is None:
+        return _json_error(status.HTTP_401_UNAUTHORIZED, "Unauthorized")
+
+    return JSONResponse(status_code=status.HTTP_200_OK, content=user)
+
+
+@app.post("/api/user/class")
+async def api_user_class(
+    payload: dict[str, Any] = Body(...),
+    authorization: str | None = Header(default=None),
+) -> JSONResponse:
+    class_name = payload.get("class")
+    if not isinstance(class_name, str):
+        return _json_error(status.HTTP_400_BAD_REQUEST, "Class is required")
+
+    user = await update_user_class(_extract_bearer_token(authorization), class_name)
+    if user is None:
+        return _json_error(status.HTTP_401_UNAUTHORIZED, "Unauthorized")
+
+    return JSONResponse(status_code=status.HTTP_200_OK, content=user)
 
 
 @app.post("/api/succes/claim")

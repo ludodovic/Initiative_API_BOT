@@ -8,6 +8,7 @@ from PIL import Image, ImageOps
 
 from app.config import get_settings
 from app.db import get_database
+from app.services.user_service import get_user_by_token
 
 CLAIM_COLLECTION = "success_claims"
 MAX_IMAGES = 3
@@ -16,15 +17,6 @@ SUPPORTED_IMAGE_TYPES = {
     "image/png": "png",
     "image/jpeg": "jpg",
 }
-
-
-async def get_user_by_token(token: str | None) -> dict[str, Any] | None:
-    if not token:
-        return None
-
-    database = await get_database()
-    user = await database["users"].find_one({"token": token})
-    return _serialize(user) if user else None
 
 
 async def create_success_claim(
