@@ -19,6 +19,7 @@ async def get_success_leaderboard() -> list[dict[str, Any]]:
             "_id": 0,
             "dofus_username": 1,
             "token": 1,
+            "class": 1,
         },
     ).sort("dofus_username", 1)
     leaderboard: list[dict[str, Any]] = []
@@ -29,6 +30,7 @@ async def get_success_leaderboard() -> list[dict[str, Any]]:
         leaderboard.append(
             {
                 "dofus_username": str(user.get("dofus_username", "")),
+                "className": str(user.get("class", "NoClass")),
                 "totalPoints": progress["totalPoints"],
                 "successCount": len(progress["unlockedList"]),
             }
@@ -42,7 +44,6 @@ async def get_success_leaderboard() -> list[dict[str, Any]]:
             player["dofus_username"].casefold(),
         ),
     )
-
 
 async def get_unlocked_successes(token: str | None) -> dict[str, Any]:
     if not token:
@@ -111,4 +112,3 @@ async def get_latest_newsletter() -> dict[str, str]:
         "title": str(newsletter.get("title", "")),
         "content": str(newsletter.get("content", "")),
     }
-
