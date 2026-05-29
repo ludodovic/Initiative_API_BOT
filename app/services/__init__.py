@@ -12,6 +12,7 @@ from app.services.success_validation_service import (
     find_success,
     get_validation_channel,
     get_validation_request,
+    get_user_validation_history,
     refuse_validation,
     set_validation_channel,
 )
@@ -33,6 +34,7 @@ __all__ = [
     "get_user_profile",
     "get_validation_channel",
     "get_validation_request",
+    "get_user_validation_history",
     "refuse_validation",
     "set_validation_channel",
     "update_user_class",

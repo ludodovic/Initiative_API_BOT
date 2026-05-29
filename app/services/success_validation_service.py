@@ -196,6 +196,27 @@ async def get_validation_request(message_id: int) -> dict[str, Any] | None:
     return _serialize(validation) if validation else None
 
 
+async def get_user_validation_history(discord_username: str) -> dict[str, list[dict[str, Any]]]:
+    database = await get_database()
+    cursor = database[VALIDATION_COLLECTION].find(
+        {"member_discord_username": discord_username},
+    ).sort("_id", -1)
+    history = {
+        "approved": [],
+        "pending": [],
+        "refused": [],
+    }
+
+    async for validation in cursor:
+        status = validation.get("status")
+        if status not in history:
+            continue
+
+        history[status].append(_serialize_validation_history_item(validation))
+
+    return history
+
+
 async def approve_validation(message_id: int) -> dict[str, Any] | None:
     database = await get_database()
     validation = await database[VALIDATION_COLLECTION].find_one({"message_id": message_id})
@@ -229,6 +250,19 @@ async def refuse_validation(message_id: int) -> dict[str, Any] | None:
 
 def _serialize(document: dict[str, Any]) -> dict[str, Any]:
     return {key: value for key, value in document.items() if key != "_id"}
+
+
+def _serialize_validation_history_item(validation: dict[str, Any]) -> dict[str, Any]:
+    object_id = validation.get("_id")
+    submitted_at = object_id.generation_time.isoformat() if object_id else ""
+
+    return {
+        "succes_id": validation.get("success_id"),
+        "succes_name": validation.get("success_name", ""),
+        "submitted_at": submitted_at,
+        "requester_discord_username": validation.get("requester_discord_username", ""),
+        "status": validation.get("status", ""),
+    }
 
 
 def _find_success_in_category_by_id(

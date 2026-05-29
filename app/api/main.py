@@ -18,6 +18,7 @@ from app.services import (
     get_unlocked_successes,
     get_user_by_token,
     get_user_profile,
+    get_user_validation_history,
     update_user_class,
 )
 from app.services.claim_service import validate_image_content_types
@@ -52,6 +53,16 @@ async def api_success_catalog() -> list[dict]:
 @app.get("/api/succes/leaderboard")
 async def api_success_leaderboard() -> list[dict]:
     return await get_success_leaderboard()
+
+
+@app.get("/api/succes/validations")
+async def api_success_validations(authorization: str | None = Header(default=None)) -> JSONResponse:
+    user = await get_user_by_token(_extract_bearer_token(authorization))
+    if user is None:
+        return _json_error(status.HTTP_401_UNAUTHORIZED, "Unauthorized")
+
+    history = await get_user_validation_history(str(user.get("discord_username", "")))
+    return JSONResponse(status_code=status.HTTP_200_OK, content=history)
 
 
 @app.get("/api/user")

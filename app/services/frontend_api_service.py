@@ -58,19 +58,42 @@ async def get_unlocked_successes(token: str | None) -> dict[str, Any]:
     if not isinstance(achievement_ids, list) or not achievement_ids:
         return EMPTY_PROGRESS
 
+    achievement_id_set = {
+        achievement_id
+        for achievement_id in achievement_ids
+        if isinstance(achievement_id, int)
+    }
+    if not achievement_id_set:
+        return EMPTY_PROGRESS
+
     successes = database["succes"].find({"catList.id": {"$in": achievement_ids}})
     unlocked_list: list[str] = []
     total_points = 0
 
     async for category in successes:
+        category_success_ids: list[int] = []
+
         for success in category.get("catList", []):
-            if success.get("id") not in achievement_ids:
+            success_id = success.get("id")
+            if isinstance(success_id, int):
+                category_success_ids.append(success_id)
+
+            if success_id not in achievement_id_set:
                 continue
 
             name = success.get("name")
             if isinstance(name, str):
                 unlocked_list.append(name)
             total_points += int(success.get("value", 0))
+
+        if category_success_ids and all(
+            success_id in achievement_id_set
+            for success_id in category_success_ids
+        ):
+            category_name = category.get("catName")
+            if isinstance(category_name, str):
+                unlocked_list.append(category_name)
+            total_points += int(category.get("catValue", 0))
 
     return {
         "unlockedList": unlocked_list,
