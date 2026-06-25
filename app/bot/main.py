@@ -17,6 +17,7 @@ from app.services.success_validation_service import (
     refuse_validation,
     set_validation_channel,
 )
+from app.services.member_sync_service import sync_all_guild_members
 from app.services.user_registration_service import (
     build_registration_link,
     create_registered_user,
@@ -42,6 +43,12 @@ def build_bot() -> commands.Bot:
     async def on_ready() -> None:
         nonlocal slash_commands_synced
         logger.info("Discord bot connected as %s", bot.user)
+        
+        # Synchroniser tous les membres du guild au démarrage
+        synced_count = await sync_all_guild_members(bot)
+        if synced_count > 0:
+            logger.info("Synchronized %d guild members", synced_count)
+        
         if not slash_commands_synced:
             if settings.discord_guild_id:
                 guild = discord.Object(id=settings.discord_guild_id)
@@ -196,6 +203,7 @@ def build_bot() -> commands.Bot:
             discord_username=str(member),
             dofus_username=dofus_username,
             roles=roles,
+            discord_id=member.id,
         )
 
         registration_link = build_registration_link(user["token"], settings.registration_url)

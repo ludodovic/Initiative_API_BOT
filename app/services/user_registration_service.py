@@ -11,6 +11,7 @@ async def create_registered_user(
     discord_username: str,
     dofus_username: str,
     roles: list[str],
+    discord_id: int | None = None,
 ) -> dict[str, Any]:
     database = await get_database()
     users = database[USER_COLLECTION]
@@ -24,6 +25,7 @@ async def create_registered_user(
 
     user = {
         "id": next_id,
+        "discord_id": discord_id,
         "discord_username": discord_username,
         "dofus_username": dofus_username,
         "roles": roles,
