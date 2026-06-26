@@ -58,7 +58,7 @@ async def _backup_forum_channels(bot: discord.Client) -> int:
             message_id_counter = 1
             
             try:
-                async for message in thread.history(oldest_first=True):
+                async for message in thread.history(limit=None, oldest_first=True):
                     # Ignorer les messages des bots
                     if message.author.bot:
                         continue
