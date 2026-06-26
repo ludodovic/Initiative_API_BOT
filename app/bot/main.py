@@ -18,6 +18,7 @@ from app.services.success_validation_service import (
     set_validation_channel,
 )
 from app.services.member_sync_service import sync_all_guild_members
+from app.services.message_backup_service import backup_all_messages
 from app.services.user_registration_service import (
     build_registration_link,
     create_registered_user,
@@ -48,6 +49,11 @@ def build_bot() -> commands.Bot:
         synced_count = await sync_all_guild_members(bot)
         if synced_count > 0:
             logger.info("Synchronized %d guild members", synced_count)
+        
+        # Sauvegarder les messages des forums et channels textuels
+        forums_count, messages_count = await backup_all_messages(bot)
+        if forums_count > 0 or messages_count > 0:
+            logger.info("Backed up %d forums and %d text messages", forums_count, messages_count)
         
         if not slash_commands_synced:
             if settings.discord_guild_id:

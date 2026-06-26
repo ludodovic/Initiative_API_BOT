@@ -1,15 +1,13 @@
-from typing import Any
-
 import discord
 from app.config import get_settings
 from app.db import get_database
 
-USER_COLLECTION = "users"
+BACKUP_COLLECTION = "Sauvegarde discord"
 
 
 async def sync_all_guild_members(bot: discord.Client) -> int:
     """
-    Synchronise tous les membres du guild configuré avec la base de données.
+    Synchronise tous les membres du guild configuré avec la collection Sauvegarde discord.
     Récupère pour chaque membre: discord_id, discord_username, dofus_username (alias), roles.
     Retourne le nombre de membres synchronisés.
     """
@@ -25,7 +23,7 @@ async def sync_all_guild_members(bot: discord.Client) -> int:
         return 0
     
     database = await get_database()
-    users_collection = database[USER_COLLECTION]
+    backup_collection = database[BACKUP_COLLECTION]
     
     synced_count = 0
     
@@ -40,8 +38,8 @@ async def sync_all_guild_members(bot: discord.Client) -> int:
         dofus_username = member.nick or member.display_name
         roles = [role.name for role in member.roles if role.name != "@everyone"]
         
-        # Mettre à jour ou créer l'utilisateur
-        await users_collection.update_one(
+        # Mettre à jour ou créer le membre dans la sauvegarde
+        await backup_collection.update_one(
             {"discord_id": discord_id},
             {
                 "$set": {
@@ -49,10 +47,6 @@ async def sync_all_guild_members(bot: discord.Client) -> int:
                     "discord_username": discord_username,
                     "dofus_username": dofus_username,
                     "roles": roles,
-                },
-                "$setOnInsert": {
-                    "achievement": [],
-                    "token": None,
                 }
             },
             upsert=True,
