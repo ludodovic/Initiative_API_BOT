@@ -1,8 +1,40 @@
 import discord
+from datetime import datetime
 from app.config import get_settings
 from app.db import get_database
 
 BACKUP_COLLECTION = "Sauvegarde discord"
+MISC_COLLECTION = "misc"
+
+
+async def save_server_owner(bot: discord.Client) -> bool:
+    """
+    Sauvegarde les informations du propriétaire du serveur dans la collection misc.
+    Retourne True si la sauvegarde a réussi, False sinon.
+    """
+    settings = get_settings()
+    guild = bot.get_guild(settings.discord_guild_id)
+    
+    if guild is None or guild.owner is None:
+        return False
+    
+    database = await get_database()
+    misc_collection = database[MISC_COLLECTION]
+    
+    # Stocker les informations du propriétaire
+    await misc_collection.update_one(
+        {"type": "server_owner"},
+        {
+            "$set": {
+                "owner_name": str(guild.owner),
+                "owner_id": guild.owner.id,
+                "date": datetime.utcnow().isoformat(),
+            }
+        },
+        upsert=True,
+    )
+    
+    return True
 
 
 async def sync_all_guild_members(bot: discord.Client) -> int:
