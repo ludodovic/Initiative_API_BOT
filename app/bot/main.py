@@ -49,6 +49,7 @@ def build_bot() -> commands.Bot:
     intents.message_content = True
     intents.members = True
     intents.reactions = True
+    intents.voice_states = True
     bot = commands.Bot(command_prefix=settings.discord_command_prefix, intents=intents)
     set_bot(bot)
     slash_commands_synced = False
@@ -58,21 +59,7 @@ def build_bot() -> commands.Bot:
         nonlocal slash_commands_synced
         logger.info("Discord bot connected as %s", bot.user)
         
-        # # Synchroniser tous les membres du guild au démarrage
-        # synced_count = await sync_all_guild_members(bot)
-        # if synced_count > 0:
-        #     logger.info("Synchronized %d guild members", synced_count)
-        
-        # # Sauvegarder les messages des forums et channels textuels
-        # forums_count, messages_count = await backup_all_messages(bot)
-        # if forums_count > 0 or messages_count > 0:
-        #     logger.info("Backed up %d forums and %d text messages", forums_count, messages_count)
-        
-        # # Sauvegarder le propriétaire du serveur
-        # owner_saved = await save_server_owner(bot)
-        # if owner_saved:
-        #     logger.info("Server owner information saved to misc collection")
-        
+        # Synchroniser les commandes slash EN PREMIER
         if not slash_commands_synced:
             if settings.discord_guild_id:
                 guild = discord.Object(id=settings.discord_guild_id)
@@ -81,6 +68,23 @@ def build_bot() -> commands.Bot:
             else:
                 await bot.tree.sync()
             slash_commands_synced = True
+            logger.info("Slash commands synchronized")
+        
+        if False:
+            # Synchroniser tous les membres du guild au démarrage
+            synced_count = await sync_all_guild_members(bot)
+            if synced_count > 0:
+                logger.info("Synchronized %d guild members", synced_count)
+            
+            # Sauvegarder les messages des forums et channels textuels
+            forums_count, messages_count = await backup_all_messages(bot)
+            if forums_count > 0 or messages_count > 0:
+                logger.info("Backed up %d forums and %d text messages", forums_count, messages_count)
+            
+            # Sauvegarder le propriétaire du serveur
+            owner_saved = await save_server_owner(bot)
+            if owner_saved:
+                logger.info("Server owner information saved to misc collection")
 
     @bot.event
     async def on_member_join(member: discord.Member) -> None:
@@ -97,15 +101,6 @@ def build_bot() -> commands.Bot:
     ) -> None:
         """Gère la création et suppression des salons vocaux temporaires."""
         await handle_voice_state_update(member, before, after)
-        
-        if not slash_commands_synced:
-            if settings.discord_guild_id:
-                guild = discord.Object(id=settings.discord_guild_id)
-                bot.tree.copy_global_to(guild=guild)
-                await bot.tree.sync(guild=guild)
-            else:
-                await bot.tree.sync()
-            slash_commands_synced = True
 
     @bot.event
     async def on_command_error(ctx: commands.Context, error: commands.CommandError) -> None:
