@@ -19,6 +19,14 @@ from app.services.success_validation_service import (
 )
 from app.services.member_sync_service import restore_member_roles, save_server_owner, sync_all_guild_members
 from app.services.message_backup_service import backup_all_messages, restore_forum_data
+from app.services.reaction_role_service import (
+    get_event_message,
+    get_rules_message,
+    handle_event_reaction,
+    handle_rules_reaction,
+    set_event_message,
+    set_rules_message,
+)
 from app.services.user_registration_service import (
     build_registration_link,
     create_registered_user,
@@ -202,10 +210,113 @@ def build_bot() -> commands.Bot:
         )
         await interaction.followup.send(result, ephemeral=True)
 
+    @bot.tree.command(
+        name="set_rules_message",
+        description="Enregistre un message comme contenant les règles du serveur.",
+    )
+    @app_commands.describe(message_id="ID du message contenant les règles")
+    async def slash_set_rules_message(
+        interaction: discord.Interaction,
+        message_id: int,
+    ) -> None:
+        if interaction.guild is None:
+            await interaction.response.send_message(
+                "Cette commande ne peut être utilisée que sur un serveur.",
+                ephemeral=True,
+            )
+            return
+        
+        await set_rules_message(interaction.guild.id, message_id)
+        
+        # Ajouter la réaction au message
+        channel = interaction.channel
+        if channel is None:
+            await interaction.response.send_message(
+                "Impossible de trouver le channel.",
+                ephemeral=True,
+            )
+            return
+        
+        try:
+            message = await channel.fetch_message(message_id)
+            await message.add_reaction("\N{WHITE HEAVY CHECK MARK}")
+            await interaction.response.send_message(
+                f"✅ Message des règles enregistré. Les utilisateurs peuvent maintenant "
+                f"réagir avec :white_check_mark: pour accepter le règlement.",
+                ephemeral=True,
+            )
+        except discord.NotFound:
+            await interaction.response.send_message(
+                f"❌ Message avec ID {message_id} introuvable.",
+                ephemeral=True,
+            )
+
+    @bot.tree.command(
+        name="creer_reaction_role_event",
+        description="Configure un message pour attribuer le rôle Event par réaction.",
+    )
+    @app_commands.describe(
+        message_id="ID du message pour l'événement",
+        reaction_name="Nom de l'emoji de réaction",
+    )
+    async def slash_creer_reaction_role_event(
+        interaction: discord.Interaction,
+        message_id: int,
+        reaction_name: str,
+    ) -> None:
+        if interaction.guild is None:
+            await interaction.response.send_message(
+                "Cette commande ne peut être utilisée que sur un serveur.",
+                ephemeral=True,
+            )
+            return
+        
+        # Retirer le rôle Event de tous les membres
+        role = discord.utils.get(interaction.guild.roles, name="Event")
+        if role is not None:
+            for member in interaction.guild.members:
+                if not member.bot and role in member.roles:
+                    try:
+                        await member.remove_roles(role)
+                    except Exception:
+                        pass
+        
+        # Enregistrer le nouveau message et réaction
+        await set_event_message(interaction.guild.id, message_id, reaction_name)
+        
+        # Ajouter la réaction au message
+        channel = interaction.channel
+        if channel is None:
+            await interaction.response.send_message(
+                "Impossible de trouver le channel.",
+                ephemeral=True,
+            )
+            return
+        
+        try:
+            message = await channel.fetch_message(message_id)
+            await message.add_reaction(reaction_name)
+            await interaction.response.send_message(
+                f"✅ Message d'événement configuré. Les utilisateurs peuvent maintenant "
+                f"réagir avec {reaction_name} pour obtenir le rôle Event.",
+                ephemeral=True,
+            )
+        except discord.NotFound:
+            await interaction.response.send_message(
+                f"❌ Message avec ID {message_id} introuvable.",
+                ephemeral=True,
+            )
+
     @bot.event
     async def on_raw_reaction_add(payload: discord.RawReactionActionEvent) -> None:
         if payload.user_id == bot.user.id or payload.guild_id is None:
             return
+
+        # Gérer les réactions pour les règles (règlement accepté)
+        await handle_rules_reaction(bot, payload, is_add=True)
+        
+        # Gérer les réactions pour les événements
+        await handle_event_reaction(bot, payload, is_add=True)
 
         if payload.emoji.name in {APPROVE_EMOJI, REFUSE_EMOJI}:
             await _handle_validation_reaction(bot, payload)
@@ -251,6 +362,18 @@ def build_bot() -> commands.Bot:
             await member.send(registration_link)
         except discord.Forbidden:
             logger.warning("Could not send registration DM to %s", member)
+
+    @bot.event
+    async def on_raw_reaction_remove(payload: discord.RawReactionActionEvent) -> None:
+        """Gère le retrait des rôles quand un utilisateur enlève une réaction."""
+        if payload.user_id == bot.user.id or payload.guild_id is None:
+            return
+        
+        # Gérer les réactions pour les règles (règlement accepté)
+        await handle_rules_reaction(bot, payload, is_add=False)
+        
+        # Gérer les réactions pour les événements
+        await handle_event_reaction(bot, payload, is_add=False)
 
     return bot
 
