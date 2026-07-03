@@ -59,16 +59,20 @@ def build_bot() -> commands.Bot:
         nonlocal slash_commands_synced
         logger.info("Discord bot connected as %s", bot.user)
         
-        # Synchroniser les commandes slash EN PREMIER
+        # Synchroniser les commandes slash sur TOUS les serveurs
         if not slash_commands_synced:
-            if settings.discord_guild_id:
-                guild = discord.Object(id=settings.discord_guild_id)
-                bot.tree.copy_global_to(guild=guild)
-                await bot.tree.sync(guild=guild)
-            else:
-                await bot.tree.sync()
+            # Synchronisation globale pour tous les serveurs
+            await bot.tree.sync()
+            
+            # Synchroniser explicitement sur chaque serveur pour une propagation immédiate
+            for guild in bot.guilds:
+                try:
+                    await bot.tree.sync(guild=discord.Object(id=guild.id))
+                except Exception as e:
+                    logger.warning(f"Failed to sync slash commands for guild {guild.id}: {e}")
+            
             slash_commands_synced = True
-            logger.info("Slash commands synchronized")
+            logger.info("Slash commands synchronized globally and per-guild")
         
         if False:
             # Synchroniser tous les membres du guild au démarrage
