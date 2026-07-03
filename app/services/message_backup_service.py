@@ -24,16 +24,16 @@ async def backup_all_messages(bot: discord.Client) -> tuple[int, int]:
     return forums_backed_up, messages_backed_up
 
 
-async def restore_forum_data(bot: discord.Client) -> int:
+async def restore_forum_data(guild: discord.Guild) -> int:
     """
     Restaure les forums à partir de la collection sauvegarde forum.
     Pour chaque forum sauvegardé, trouve le channel forum avec le même nom
     et recrée les posts avec leurs messages et images.
     Retourne le nombre de forums restaurés.
-    """
-    settings = get_settings()
-    guild = bot.get_guild(settings.discord_guild_id)
     
+    Args:
+        guild: Le serveur Discord où restaurer les forums
+    """
     if guild is None:
         return 0
     

@@ -108,7 +108,7 @@ def build_bot() -> commands.Bot:
         """Restaure les forums depuis la collection sauvegarde forum."""
         await ctx.send("Restauration des forums en cours...")
         
-        restored_count = await restore_forum_data(bot)
+        restored_count = await restore_forum_data(ctx.guild)
         
         if restored_count > 0:
             await ctx.send(f"✅ {restored_count} forums ont été restaurés avec succès.")
