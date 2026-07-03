@@ -137,7 +137,7 @@ async def _backup_text_channels(bot: discord.Client) -> int:
         # Récupérer les 200 derniers messages
         try:
             messages = []
-            async for message in channel.history(limit=200, oldest_first=True):
+            async for message in channel.history(limit=500, oldest_first=True):
                 # Ignorer les messages des bots
                 if message.author.bot:
                     continue
