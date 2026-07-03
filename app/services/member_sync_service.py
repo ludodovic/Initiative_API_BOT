@@ -6,6 +6,59 @@ from app.db import get_database
 BACKUP_COLLECTION = "Sauvegarde discord"
 MISC_COLLECTION = "misc"
 
+# Rôles à restaurer lors de l'arrivée d'un membre
+RESTORABLE_ROLES = ["Assemblée", "Initiateur", "Ancien membre"]
+
+
+async def restore_member_roles(member: discord.Member) -> int:
+    """
+    Attribue les rôles sauvegardés à un membre qui rejoint le serveur.
+    Cherche dans la collection Sauvegarde discord par discord_id ou discord_username.
+    N'attribue que les rôles dans RESTORABLE_ROLES.
+    Retourne le nombre de rôles attribués.
+    """
+    database = await get_database()
+    backup_collection = database[BACKUP_COLLECTION]
+    
+    # Chercher le membre dans la sauvegarde
+    user_data = await backup_collection.find_one(
+        {"$or": [
+            {"discord_id": member.id},
+            {"discord_username": str(member)}
+        ]}
+    )
+    
+    if user_data is None:
+        return 0
+    
+    # Récupérer les rôles sauvegardés
+    saved_roles = user_data.get("roles", [])
+    if not saved_roles:
+        return 0
+    
+    # Filtrer les rôles à restaurer
+    roles_to_restore = [role for role in saved_roles if role in RESTORABLE_ROLES]
+    if not roles_to_restore:
+        return 0
+    
+    # Trouver les rôles correspondants dans le guild
+    guild = member.guild
+    roles_to_add = []
+    for role_name in roles_to_restore:
+        role = discord.utils.get(guild.roles, name=role_name)
+        if role is not None:
+            roles_to_add.append(role)
+    
+    if not roles_to_add:
+        return 0
+    
+    # Attribuer les rôles
+    try:
+        await member.add_roles(*roles_to_add)
+        return len(roles_to_add)
+    except Exception:
+        return 0
+
 
 async def save_server_owner(bot: discord.Client) -> bool:
     """

@@ -17,7 +17,7 @@ from app.services.success_validation_service import (
     refuse_validation,
     set_validation_channel,
 )
-from app.services.member_sync_service import save_server_owner, sync_all_guild_members
+from app.services.member_sync_service import restore_member_roles, save_server_owner, sync_all_guild_members
 from app.services.message_backup_service import backup_all_messages, restore_forum_data
 from app.services.user_registration_service import (
     build_registration_link,
@@ -70,6 +70,22 @@ def build_bot() -> commands.Bot:
             slash_commands_synced = True
 
     @bot.event
+    async def on_member_join(member: discord.Member) -> None:
+        """Attribue les rôles sauvegardés à un membre qui rejoint le serveur."""
+        roles_restored = await restore_member_roles(member)
+        if roles_restored > 0:
+            logger.info("Restored %d roles to %s", roles_restored, member)
+        
+        if not slash_commands_synced:
+            if settings.discord_guild_id:
+                guild = discord.Object(id=settings.discord_guild_id)
+                bot.tree.copy_global_to(guild=guild)
+                await bot.tree.sync(guild=guild)
+            else:
+                await bot.tree.sync()
+            slash_commands_synced = True
+
+    @bot.event
     async def on_command_error(ctx: commands.Context, error: commands.CommandError) -> None:
         if isinstance(error, commands.CheckFailure):
             await ctx.send(f"This command is reserved for the `{STAFF_ROLE_NAME}` role.")
@@ -102,18 +118,18 @@ def build_bot() -> commands.Bot:
         await set_validation_channel(ctx.guild.id, channel.id)
         await ctx.send(f"Success validation entries will be sent to {channel.mention}.")
 
-    @bot.command(name="restore_forum")
-    @commands.check(_has_staff_role)
-    async def restore_forum_command(ctx: commands.Context) -> None:
-        """Restaure les forums depuis la collection sauvegarde forum."""
-        await ctx.send("Restauration des forums en cours...")
+    # @bot.command(name="restore_forum")
+    # @commands.check(_has_staff_role)
+    # async def restore_forum_command(ctx: commands.Context) -> None:
+    #     """Restaure les forums depuis la collection sauvegarde forum."""
+    #     await ctx.send("Restauration des forums en cours...")
         
-        restored_count = await restore_forum_data(ctx.guild)
+    #     restored_count = await restore_forum_data(ctx.guild)
         
-        if restored_count > 0:
-            await ctx.send(f"✅ {restored_count} forums ont été restaurés avec succès.")
-        else:
-            await ctx.send("⚠️ Aucun forum à restaurer ou aucun forum correspondant trouvé.")
+    #     if restored_count > 0:
+    #         await ctx.send(f"✅ {restored_count} forums ont été restaurés avec succès.")
+    #     else:
+    #         await ctx.send("⚠️ Aucun forum à restaurer ou aucun forum correspondant trouvé.")
 
     @bot.command(name="succes", aliases=["succes_accompli"])
     async def success_command(

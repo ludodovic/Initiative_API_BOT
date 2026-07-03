@@ -79,10 +79,12 @@ async def restore_forum_data(guild: discord.Guild) -> int:
             
             try:
                 # Créer le thread
-                thread = await forum_channel.create_thread(
+                thread_result = await forum_channel.create_thread(
                     name=post_title,
                     content=content_with_images[:2000]  # Limite de 2000 caractères
                 )
+                # thread_result est un ThreadWithMessage, on récupère le thread
+                thread = thread_result.thread
                 
                 # Envoyer les autres messages dans le thread
                 for msg in messages[1:]:
