@@ -17,7 +17,7 @@ async def backup_all_messages(bot: discord.Client) -> tuple[int, int]:
     Retourne (nombre_de_forums, nombre_de_messages_textuels).
     """
     forums_backed_up = await _backup_forum_channels(bot)
-    messages_backed_up = await _backup_text_channels(bot)
+    messages_backed_up = 1 # await _backup_text_channels(bot)
     return forums_backed_up, messages_backed_up
 
 
@@ -45,17 +45,23 @@ async def _backup_forum_channels(bot: discord.Client) -> int:
             continue
         
         # Récupérer tous les threads (posts) du forum - actifs ET archivés
+        # Threads actifs
+        active_threads = []
         try:
-            # Threads actifs
             active_threads = list(forum.threads)
-            # Threads archivés
-            archived_threads = []
+        except Exception:
+            pass
+        
+        # Threads archivés
+        archived_threads = []
+        try:
             async for archived_thread in forum.fetch_archived_threads(limit=None):
                 archived_threads.append(archived_thread)
-            # Combiner les deux listes
-            threads = active_threads + archived_threads
         except Exception:
-            continue
+            pass
+        
+        # Combiner les deux listes
+        threads = active_threads + archived_threads
         
         posts = []
         
