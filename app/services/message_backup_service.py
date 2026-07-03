@@ -44,9 +44,16 @@ async def _backup_forum_channels(bot: discord.Client) -> int:
         if forum is None or not isinstance(forum, discord.ForumChannel):
             continue
         
-        # Récupérer tous les threads (posts) du forum
+        # Récupérer tous les threads (posts) du forum - actifs ET archivés
         try:
-            threads = forum.threads
+            # Threads actifs
+            active_threads = list(forum.threads)
+            # Threads archivés
+            archived_threads = []
+            async for archived_thread in forum.fetch_archived_threads(limit=None):
+                archived_threads.append(archived_thread)
+            # Combiner les deux listes
+            threads = active_threads + archived_threads
         except Exception:
             continue
         
