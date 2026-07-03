@@ -27,6 +27,11 @@ from app.services.reaction_role_service import (
     set_event_message,
     set_rules_message,
 )
+from app.services.temp_voice_service import (
+    get_temp_voice_channel,
+    handle_voice_state_update,
+    set_temp_voice_channel,
+)
 from app.services.user_registration_service import (
     build_registration_link,
     create_registered_user,
@@ -83,6 +88,15 @@ def build_bot() -> commands.Bot:
         roles_restored = await restore_member_roles(member)
         if roles_restored > 0:
             logger.info("Restored %d roles to %s", roles_restored, member)
+
+    @bot.event
+    async def on_voice_state_update(
+        member: discord.Member,
+        before: discord.VoiceState,
+        after: discord.VoiceState,
+    ) -> None:
+        """Gère la création et suppression des salons vocaux temporaires."""
+        await handle_voice_state_update(member, before, after)
         
         if not slash_commands_synced:
             if settings.discord_guild_id:
@@ -306,6 +320,40 @@ def build_bot() -> commands.Bot:
                 f"❌ Message avec ID {message_id} introuvable.",
                 ephemeral=True,
             )
+
+    @bot.tree.command(
+        name="creer_vocal_temporaire",
+        description="Configure un channel vocal pour créer des salons temporaires.",
+    )
+    @app_commands.describe(channel_id="ID du channel vocal déclencheur")
+    async def slash_creer_vocal_temporaire(
+        interaction: discord.Interaction,
+        channel_id: int,
+    ) -> None:
+        if interaction.guild is None:
+            await interaction.response.send_message(
+                "Cette commande ne peut être utilisée que sur un serveur.",
+                ephemeral=True,
+            )
+            return
+        
+        # Vérifier que le channel existe et est un channel vocal
+        channel = interaction.guild.get_channel(channel_id)
+        if channel is None or not isinstance(channel, discord.VoiceChannel):
+            await interaction.response.send_message(
+                f"❌ Channel avec ID {channel_id} introuvable ou n'est pas un channel vocal.",
+                ephemeral=True,
+            )
+            return
+        
+        # Enregistrer le channel
+        await set_temp_voice_channel(interaction.guild.id, channel_id)
+        
+        await interaction.response.send_message(
+            f"✅ Channel vocal configuré. Quand un membre rejoindra {channel.mention}, "
+            f"un salon temporaire sera créé automatiquement.",
+            ephemeral=True,
+        )
 
     @bot.event
     async def on_raw_reaction_add(payload: discord.RawReactionActionEvent) -> None:
