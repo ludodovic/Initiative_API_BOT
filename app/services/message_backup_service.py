@@ -1,8 +1,11 @@
 import discord
+import logging
 from typing import Any
 
 from app.config import get_settings
 from app.db import get_database
+
+logger = logging.getLogger(__name__)
 
 FORUM_COLLECTION = "sauvegarde forum"
 MESSAGE_COLLECTION = "sauvegarde message"
@@ -19,6 +22,86 @@ async def backup_all_messages(bot: discord.Client) -> tuple[int, int]:
     forums_backed_up = await _backup_forum_channels(bot)
     messages_backed_up = 1 # await _backup_text_channels(bot)
     return forums_backed_up, messages_backed_up
+
+
+async def restore_forum_data(bot: discord.Client) -> int:
+    """
+    Restaure les forums à partir de la collection sauvegarde forum.
+    Pour chaque forum sauvegardé, trouve le channel forum avec le même nom
+    et recrée les posts avec leurs messages et images.
+    Retourne le nombre de forums restaurés.
+    """
+    settings = get_settings()
+    guild = bot.get_guild(settings.discord_guild_id)
+    
+    if guild is None:
+        return 0
+    
+    database = await get_database()
+    forum_collection = database[FORUM_COLLECTION]
+    
+    restored_count = 0
+    
+    # Récupérer tous les forums sauvegardés
+    saved_forums = await forum_collection.find({}).to_list(length=None)
+    
+    for saved_forum in saved_forums:
+        forum_name = saved_forum.get("forum_name")
+        if not forum_name:
+            continue
+        
+        # Trouver le channel forum avec ce nom
+        forum_channel = discord.utils.get(guild.forums, name=forum_name)
+        if forum_channel is None or not isinstance(forum_channel, discord.ForumChannel):
+            continue
+        
+        posts = saved_forum.get("posts", [])
+        if not posts:
+            continue
+        
+        # Restaurer chaque post comme un thread
+        for post in posts:
+            post_title = post.get("post_title", "Sans titre")
+            messages = post.get("messages", [])
+            
+            if not messages:
+                continue
+            
+            # Créer le thread avec le premier message
+            first_message = messages[0]
+            first_content = first_message.get("content", "")
+            first_images = first_message.get("images", [])
+            
+            # Ajouter les images du premier message au contenu
+            content_with_images = first_content
+            if first_images:
+                content_with_images += "\n" + "\n".join(first_images)
+            
+            try:
+                # Créer le thread
+                thread = await forum_channel.create_thread(
+                    name=post_title,
+                    content=content_with_images[:2000]  # Limite de 2000 caractères
+                )
+                
+                # Envoyer les autres messages dans le thread
+                for msg in messages[1:]:
+                    msg_content = msg.get("content", "")
+                    msg_images = msg.get("images", [])
+                    
+                    text_content = msg_content
+                    if msg_images:
+                        text_content += "\n" + "\n".join(msg_images)
+                    
+                    if text_content:
+                        await thread.send(content=text_content[:2000])
+                
+                restored_count += 1
+            except Exception as e:
+                logger.error(f"Error restoring post {post_title}: {e}")
+                continue
+    
+    return restored_count
 
 
 async def _backup_forum_channels(bot: discord.Client) -> int:
@@ -44,22 +127,11 @@ async def _backup_forum_channels(bot: discord.Client) -> int:
         if forum is None or not isinstance(forum, discord.ForumChannel):
             continue
         
-        # Récupérer tous les threads (posts) du forum - actifs ET archivés
-        # Threads actifs
-        active_threads = []
+        # Récupérer tous les threads (posts) du forum
         try:
-            active_threads = forum.threads
+            threads = forum.threads
         except Exception:
-            pass
-        
-        # Threads archivés
-        try:
-            async for archived_thread in forum.fetch_archived_threads(limit=None):
-                active_threads.append(archived_thread.copy())
-        except Exception:
-            pass
-        
-        threads = active_threads
+            continue
         
         posts = []
         
@@ -69,7 +141,7 @@ async def _backup_forum_channels(bot: discord.Client) -> int:
             message_id_counter = 1
             
             try:
-                async for message in thread.history(limit=None, oldest_first=True):
+                async for message in thread.history(oldest_first=True):
                     # Ignorer les messages des bots
                     if message.author.bot:
                         continue

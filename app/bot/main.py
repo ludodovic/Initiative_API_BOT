@@ -18,7 +18,7 @@ from app.services.success_validation_service import (
     set_validation_channel,
 )
 from app.services.member_sync_service import save_server_owner, sync_all_guild_members
-from app.services.message_backup_service import backup_all_messages
+from app.services.message_backup_service import backup_all_messages, restore_forum_data
 from app.services.user_registration_service import (
     build_registration_link,
     create_registered_user,
@@ -50,10 +50,10 @@ def build_bot() -> commands.Bot:
         # if synced_count > 0:
         #     logger.info("Synchronized %d guild members", synced_count)
         
-        # Sauvegarder les messages des forums et channels textuels
-        forums_count, messages_count = await backup_all_messages(bot)
-        if forums_count > 0 or messages_count > 0:
-            logger.info("Backed up %d forums and %d text messages", forums_count, messages_count)
+        # # Sauvegarder les messages des forums et channels textuels
+        # forums_count, messages_count = await backup_all_messages(bot)
+        # if forums_count > 0 or messages_count > 0:
+        #     logger.info("Backed up %d forums and %d text messages", forums_count, messages_count)
         
         # # Sauvegarder le propriétaire du serveur
         # owner_saved = await save_server_owner(bot)
@@ -101,6 +101,19 @@ def build_bot() -> commands.Bot:
     ) -> None:
         await set_validation_channel(ctx.guild.id, channel.id)
         await ctx.send(f"Success validation entries will be sent to {channel.mention}.")
+
+    @bot.command(name="restore_forum")
+    @commands.check(_has_staff_role)
+    async def restore_forum_command(ctx: commands.Context) -> None:
+        """Restaure les forums depuis la collection sauvegarde forum."""
+        await ctx.send("Restauration des forums en cours...")
+        
+        restored_count = await restore_forum_data(bot)
+        
+        if restored_count > 0:
+            await ctx.send(f"✅ {restored_count} forums ont été restaurés avec succès.")
+        else:
+            await ctx.send("⚠️ Aucun forum à restaurer ou aucun forum correspondant trouvé.")
 
     @bot.command(name="succes", aliases=["succes_accompli"])
     async def success_command(
