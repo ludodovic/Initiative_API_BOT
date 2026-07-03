@@ -48,20 +48,18 @@ async def _backup_forum_channels(bot: discord.Client) -> int:
         # Threads actifs
         active_threads = []
         try:
-            active_threads = list(forum.threads)
+            active_threads = forum.threads
         except Exception:
             pass
         
         # Threads archivés
-        archived_threads = []
         try:
             async for archived_thread in forum.fetch_archived_threads(limit=None):
-                archived_threads.append(archived_thread)
+                active_threads.append(archived_thread.copy())
         except Exception:
             pass
         
-        # Combiner les deux listes
-        threads = active_threads + archived_threads
+        threads = active_threads
         
         posts = []
         
