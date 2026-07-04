@@ -40,7 +40,7 @@ from app.services.user_registration_service import (
 logger = logging.getLogger(__name__)
 APPROVE_EMOJI = "\N{WHITE HEAVY CHECK MARK}"
 REFUSE_EMOJI = "\N{CROSS MARK}"
-STAFF_ROLE_NAME = "Conseiller"
+STAFF_ROLE_NAME = "Conseil"
 
 
 def build_bot() -> commands.Bot:
@@ -138,6 +138,15 @@ def build_bot() -> commands.Bot:
     ) -> None:
         await set_validation_channel(ctx.guild.id, channel.id)
         await ctx.send(f"Success validation entries will be sent to {channel.mention}.")
+
+    @bot.command(name="degage")
+    @commands.check(_has_staff_role)
+    async def degage_command(ctx: commands.Context) -> None:
+        if ctx.guild is None:
+            await ctx.send("Cette commande ne peut être utilisée que sur un serveur.")
+            return
+        await ctx.send("Je quitte ce serveur !")
+        await ctx.guild.leave()
 
     # @bot.command(name="restore_forum")
     # @commands.check(_has_staff_role)
