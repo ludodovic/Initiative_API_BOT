@@ -12,6 +12,9 @@ CONFIG_COLLECTION = "bot_config"
 # Préfixe pour les salons temporaires
 TEMP_VOICE_PREFIX = "Salon de "
 
+# Liste globale des IDs des channels vocaux temporaires
+_temp_voice_channels: set[int] = set()
+
 
 async def set_temp_voice_channel(guild_id: int, channel_id: int) -> None:
     """Enregistre le channel vocal qui déclenche la création de salons temporaires."""
@@ -104,6 +107,9 @@ async def _create_temp_voice_channel(member: discord.Member, parent_channel: dis
         # Déplacer le membre dans le nouveau salon
         await member.move_to(temp_channel)
         
+        # Ajouter l'ID du channel à la liste globale
+        _temp_voice_channels.add(temp_channel.id)
+        
         logger.info("Created temporary voice channel %s for %s", temp_channel.name, member)
         
     except Exception as e:
@@ -128,6 +134,8 @@ async def _check_and_delete_empty_channel(channel: discord.VoiceChannel) -> None
     
     try:
         await channel.delete(reason="Salon vocal temporaire vide")
+        # Retirer l'ID du channel de la liste globale
+        _temp_voice_channels.discard(channel.id)
         logger.info("Deleted empty temporary voice channel %s", channel.name)
     except Exception as e:
         logger.error("Error deleting temporary voice channel %s: %s", channel.name, e)
@@ -137,4 +145,4 @@ def _is_temp_voice_channel(channel: discord.VoiceChannel) -> bool:
     """
     Vérifie si un channel vocal est un salon temporaire.
     """
-    return channel.name.startswith(TEMP_VOICE_PREFIX)
+    return channel.id in _temp_voice_channels
