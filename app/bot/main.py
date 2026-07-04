@@ -40,7 +40,7 @@ from app.services.user_registration_service import (
 logger = logging.getLogger(__name__)
 APPROVE_EMOJI = "\N{WHITE HEAVY CHECK MARK}"
 REFUSE_EMOJI = "\N{CROSS MARK}"
-STAFF_ROLE_NAME = "Conseil"
+STAFF_ROLE_NAME = "Conseiller"
 
 
 def build_bot() -> commands.Bot:
@@ -145,8 +145,11 @@ def build_bot() -> commands.Bot:
         if ctx.guild is None:
             await ctx.send("Cette commande ne peut être utilisée que sur un serveur.")
             return
-        await ctx.send("Je quitte ce serveur !")
-        await ctx.guild.leave()
+        if False:
+            await ctx.send("Je quitte ce serveur !")
+            await ctx.guild.leave()
+        else:
+            await ctx.send("⚠️ La commande de départ du serveur est désactivée pour le moment. Veuillez contacter un administraLudzu")
 
     # @bot.command(name="restore_forum")
     # @commands.check(_has_staff_role)
