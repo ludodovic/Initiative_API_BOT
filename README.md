@@ -38,7 +38,7 @@ python -m app.bot.main
 
 ## Bot Usage
 
-The bot registration command is reserved for members with the `Conseil` role:
+The bot registration command is reserved for members with the `Conseiller` role:
 
 ```text
 !register_message #channel Your registration message here
@@ -88,7 +88,7 @@ Users can also use the visible Discord slash command:
 
 Set `DISCORD_GUILD_ID` in `.env` to your server id if you want this slash command to appear quickly during deployment. If it is left as `0`, Discord global command sync can take longer.
 
-The bot creates one pending validation message per user in the configured validation channel. Members with the `Conseil` role can approve with the green check reaction or refuse with the red cross reaction. Approved validations add the success id to the user's `achievement` list.
+The bot creates one pending validation message per user in the configured validation channel. Members with the `Conseiller` role can approve with the green check reaction or refuse with the red cross reaction. Approved validations add the success id to the user's `achievement` list.
 
 ## Run Both in One Process
 

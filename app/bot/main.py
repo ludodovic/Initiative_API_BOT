@@ -40,7 +40,7 @@ from app.services.user_registration_service import (
 logger = logging.getLogger(__name__)
 APPROVE_EMOJI = "\N{WHITE HEAVY CHECK MARK}"
 REFUSE_EMOJI = "\N{CROSS MARK}"
-STAFF_ROLE_NAME = "Conseil"
+STAFF_ROLE_NAME = "Conseiller"
 
 
 def build_bot() -> commands.Bot:
@@ -230,7 +230,7 @@ def build_bot() -> commands.Bot:
     @app_commands.describe(message_id="ID du message contenant les règles")
     async def slash_set_rules_message(
         interaction: discord.Interaction,
-        message_id: int,
+        message_id: str,
     ) -> None:
         if interaction.guild is None:
             await interaction.response.send_message(
@@ -239,7 +239,7 @@ def build_bot() -> commands.Bot:
             )
             return
         
-        await set_rules_message(interaction.guild.id, message_id)
+        await set_rules_message(interaction.guild.id, int(message_id))
         
         # Ajouter la réaction au message
         channel = interaction.channel
@@ -251,7 +251,7 @@ def build_bot() -> commands.Bot:
             return
         
         try:
-            message = await channel.fetch_message(message_id)
+            message = await channel.fetch_message(int(message_id))
             await message.add_reaction("\N{WHITE HEAVY CHECK MARK}")
             await interaction.response.send_message(
                 f"✅ Message des règles enregistré. Les utilisateurs peuvent maintenant "
@@ -274,7 +274,7 @@ def build_bot() -> commands.Bot:
     )
     async def slash_creer_reaction_role_event(
         interaction: discord.Interaction,
-        message_id: int,
+        message_id: str,
         reaction_name: str,
     ) -> None:
         if interaction.guild is None:
@@ -295,7 +295,7 @@ def build_bot() -> commands.Bot:
                         pass
         
         # Enregistrer le nouveau message et réaction
-        await set_event_message(interaction.guild.id, message_id, reaction_name)
+        await set_event_message(interaction.guild.id, int(message_id), reaction_name)
         
         # Ajouter la réaction au message
         channel = interaction.channel
@@ -307,7 +307,7 @@ def build_bot() -> commands.Bot:
             return
         
         try:
-            message = await channel.fetch_message(message_id)
+            message = await channel.fetch_message(int(message_id))
             await message.add_reaction(reaction_name)
             await interaction.response.send_message(
                 f"✅ Message d'événement configuré. Les utilisateurs peuvent maintenant "
@@ -327,7 +327,7 @@ def build_bot() -> commands.Bot:
     @app_commands.describe(channel_id="ID du channel vocal déclencheur")
     async def slash_creer_vocal_temporaire(
         interaction: discord.Interaction,
-        channel_id: int,
+        channel_id: str,
     ) -> None:
         if interaction.guild is None:
             await interaction.response.send_message(
@@ -337,7 +337,7 @@ def build_bot() -> commands.Bot:
             return
         
         # Vérifier que le channel existe et est un channel vocal
-        channel = interaction.guild.get_channel(channel_id)
+        channel = interaction.guild.get_channel(int(channel_id))
         if channel is None or not isinstance(channel, discord.VoiceChannel):
             await interaction.response.send_message(
                 f"❌ Channel avec ID {channel_id} introuvable ou n'est pas un channel vocal.",
@@ -346,7 +346,7 @@ def build_bot() -> commands.Bot:
             return
         
         # Enregistrer le channel
-        await set_temp_voice_channel(interaction.guild.id, channel_id)
+        await set_temp_voice_channel(interaction.guild.id, int(channel_id))
         
         await interaction.response.send_message(
             f"✅ Channel vocal configuré. Quand un membre rejoindra {channel.mention}, "
@@ -433,7 +433,7 @@ async def _create_success_validation_entries(
 ) -> str:
     validation_channel_id = await get_validation_channel(guild.id)
     if validation_channel_id is None:
-        return "No validation channel configured. Conseil must run `!set_validation_channel #channel` first."
+        return "No validation channel configured. Conseiller must run `!set_validation_channel #channel` first."
 
     validation_channel = guild.get_channel(validation_channel_id)
     if not isinstance(validation_channel, discord.TextChannel):
