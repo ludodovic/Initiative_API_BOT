@@ -11,6 +11,12 @@ async def get_success_catalog() -> list[dict[str, Any]]:
     return [category async for category in cursor]
 
 
+async def get_success2_catalog() -> list[dict[str, Any]]:
+    database = await get_database()
+    cursor = database["succes2"].find({}, {"_id": 0}).sort("id", 1)
+    return [success async for success in cursor]
+
+
 async def get_success_leaderboard() -> list[dict[str, Any]]:
     database = await get_database()
     users = database["users"].find(

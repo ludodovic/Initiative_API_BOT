@@ -13,6 +13,7 @@ from app.services import (
     create_success_claim,
     get_calendar_events,
     get_latest_newsletter,
+    get_success2_catalog,
     get_success_catalog,
     get_success_leaderboard,
     get_unlocked_successes,
@@ -48,6 +49,11 @@ async def api_unlocked_successes(authorization: str | None = Header(default=None
 @app.get("/api/succes")
 async def api_success_catalog() -> list[dict]:
     return await get_success_catalog()
+
+
+@app.get("/api/succes2")
+async def api_success2_catalog() -> list[dict]:
+    return await get_success2_catalog()
 
 
 @app.get("/api/succes/leaderboard")
