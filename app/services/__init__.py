@@ -1,6 +1,7 @@
 from app.services.frontend_api_service import (
     get_calendar_events,
     get_latest_newsletter,
+    get_success2_catalog,
     get_success_catalog,
     get_success_leaderboard,
     get_unlocked_successes,
@@ -27,6 +28,7 @@ __all__ = [
     "find_success",
     "get_calendar_events",
     "get_latest_newsletter",
+    "get_success2_catalog",
     "get_success_catalog",
     "get_success_leaderboard",
     "get_unlocked_successes",
