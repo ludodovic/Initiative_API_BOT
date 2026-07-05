@@ -44,7 +44,7 @@ The bot registration command is reserved for members with the `Conseiller` role:
 !register_message #channel Your registration message here
 ```
 
-The bot posts the message in the chosen channel, reacts with the server emoji `:Initiative_blason:`, and listens for users reacting with the same emoji. When a user reacts, it creates a document in the `users` collection:
+The bot posts the message in the chosen channel, reacts with the server emoji `:Initiative:`, and listens for users reacting with the same emoji. When a user reacts, it creates a document in the `users` collection:
 
 ```json
 {

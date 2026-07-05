@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     discord_command_prefix: str = Field(default="!", alias="DISCORD_COMMAND_PREFIX")
     discord_guild_id: int = Field(default=0, alias="DISCORD_GUILD_ID")
     discord_registration_emoji: str = Field(
-        default="Initiative_blason",
+        default="Initiative",
         alias="DISCORD_REGISTRATION_EMOJI",
     )
     registration_url: str = Field(
