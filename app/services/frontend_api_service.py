@@ -2,7 +2,12 @@ from typing import Any
 
 from app.db import get_database
 
-EMPTY_PROGRESS = {"unlockedList": [], "totalPoints": 0}
+EMPTY_PROGRESS = {
+    "unlockedList": [],
+    "totalPoints": 0,
+    "unlockedList2": [],
+    "ticket_count": 0
+    }
 
 
 async def get_success_catalog() -> list[dict[str, Any]]:
@@ -14,7 +19,19 @@ async def get_success_catalog() -> list[dict[str, Any]]:
 async def get_success2_catalog() -> list[dict[str, Any]]:
     database = await get_database()
     cursor = database["succes2"].find({}, {"_id": 0}).sort("id", 1)
-    return [success async for success in cursor]
+    
+    HiddenText = "Les membres de la guilde doivent découvrir eux-mêmes commencer réaliser ce succès"
+    
+    results = []
+    async for success in cursor:
+        if "description" in success:
+            description = success["description"]
+            if isinstance(description, str) and description.startswith(HiddenText):
+                success = success.copy()
+                success["description"] = HiddenText
+        results.append(success)
+    
+    return results
 
 
 async def get_success_leaderboard() -> list[dict[str, Any]]:
@@ -104,6 +121,8 @@ async def get_unlocked_successes(token: str | None) -> dict[str, Any]:
     return {
         "unlockedList": unlocked_list,
         "totalPoints": total_points,
+        "unlockedList2": user.get("succes2", []),
+        "ticket_count": user.get("ticket", 0),
     }
 
 
