@@ -20,7 +20,7 @@ async def get_success2_catalog() -> list[dict[str, Any]]:
     database = await get_database()
     cursor = database["succes2"].find({}, {"_id": 0}).sort("id", 1)
     
-    HiddenText = "Les membres de la guilde doivent découvrir eux-mêmes commencer réaliser ce succès"
+    HiddenText = "Les membres de la guilde doivent découvrir eux-mêmes comment réaliser ce succès"
     
     results = []
     async for success in cursor:
