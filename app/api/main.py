@@ -109,11 +109,6 @@ async def api_claim_success(
     if user is None:
         return _json_error(status.HTTP_401_UNAUTHORIZED, "Unauthorized")
 
-    selected_images = images[:3]
-    content_types = [image.content_type or "" for image in selected_images]
-    if not validate_image_content_types(content_types):
-        return _json_error(status.HTTP_400_BAD_REQUEST, "Only PNG and JPG images are accepted")
-
     try:
         success_id = int(successId)
     except ValueError:
@@ -135,6 +130,10 @@ async def api_claim_success(
         else:
             if not images:
                 return _json_error(status.HTTP_400_BAD_REQUEST, "At least one image is required")
+            selected_images = images[:3]
+            content_types = [image.content_type or "" for image in selected_images]
+            if not validate_image_content_types(content_types):
+                return _json_error(status.HTTP_400_BAD_REQUEST, "Only PNG and JPG images are accepted")
             image_payloads = [
                 (image.content_type or "", await image.read())
                 for image in selected_images
