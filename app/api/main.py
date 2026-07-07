@@ -128,7 +128,6 @@ async def api_claim_success(
         success = await database["succes2"].find_one({"id": success_id})
         if success is None:
             return _json_error(status.HTTP_404_NOT_FOUND, "Unknown success")
-        success = {"id": success["id"], "name": success["name"], "value": success.get("value", 0)}
 
     try:
         image_payloads = [
@@ -138,7 +137,7 @@ async def api_claim_success(
         claim = await create_success_claim(
             user=user,
             success_id=success_id,
-            success_name=str(success["name"]),
+            success_name=successName,
             success_description=successDescription,
             description=description,
             images=image_payloads,
