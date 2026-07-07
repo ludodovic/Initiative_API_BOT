@@ -109,8 +109,6 @@ async def api_claim_success(
     if user is None:
         return _json_error(status.HTTP_401_UNAUTHORIZED, "Unauthorized")
 
-    if not images:
-        return _json_error(status.HTTP_400_BAD_REQUEST, "At least one image is required")
 
     selected_images = images[:3]
     content_types = [image.content_type or "" for image in selected_images]
@@ -128,6 +126,9 @@ async def api_claim_success(
         success = await database["succes2"].find_one({"id": success_id})
         if success is None:
             return _json_error(status.HTTP_404_NOT_FOUND, "Unknown success")
+    else:
+        if not images:
+            return _json_error(status.HTTP_400_BAD_REQUEST, "At least one image is required")
 
     try:
         image_payloads = [
