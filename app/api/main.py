@@ -125,7 +125,7 @@ async def api_claim_success(
     success = await find_success(str(success_id))
     if success is None:
         database = await get_database()
-        success = await database["Succes2"].find_one({"id": success_id})
+        success = await database["succes2"].find_one({"id": success_id})
         if success is None:
             return _json_error(status.HTTP_404_NOT_FOUND, "Unknown success")
         success = {"id": success["id"], "name": success["name"], "value": success.get("value", 0)}
