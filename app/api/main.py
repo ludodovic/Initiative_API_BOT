@@ -109,7 +109,6 @@ async def api_claim_success(
     if user is None:
         return _json_error(status.HTTP_401_UNAUTHORIZED, "Unauthorized")
 
-
     selected_images = images[:3]
     content_types = [image.content_type or "" for image in selected_images]
     if not validate_image_content_types(content_types):
@@ -120,21 +119,27 @@ async def api_claim_success(
     except ValueError:
         return _json_error(status.HTTP_400_BAD_REQUEST, "Unknown success")
 
+    success_saisson = 1
     success = await find_success(str(success_id))
     if success is None:
+        success_saisson = 2
         database = await get_database()
         success = await database["succes2"].find_one({"id": success_id})
         if success is None:
             return _json_error(status.HTTP_404_NOT_FOUND, "Unknown success")
-    else:
-        if not images:
-            return _json_error(status.HTTP_400_BAD_REQUEST, "At least one image is required")
 
     try:
-        image_payloads = [
-            (image.content_type or "", await image.read())
-            for image in selected_images
-        ]
+        if success_saisson == 2 and not images:
+            if images is None or len(images) == 0:
+                image_payloads = []
+        else:
+            if not images:
+                return _json_error(status.HTTP_400_BAD_REQUEST, "At least one image is required")
+            image_payloads = [
+                (image.content_type or "", await image.read())
+                for image in selected_images
+            ]
+
         claim = await create_success_claim(
             user=user,
             success_id=success_id,
