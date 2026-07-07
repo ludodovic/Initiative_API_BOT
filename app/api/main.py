@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 
 from app.bot.claim_messages import post_success_claim_for_validation
 from app.bot.runtime import get_bot
-from app.db import close_mongo_client
+from app.db import close_mongo_client, get_database
 from app.services import (
     create_success_claim,
     get_calendar_events,
@@ -124,7 +124,11 @@ async def api_claim_success(
 
     success = await find_success(str(success_id))
     if success is None:
-        return _json_error(status.HTTP_404_NOT_FOUND, "Unknown success")
+        database = await get_database()
+        success = await database["Succes2"].find_one({"id": success_id})
+        if success is None:
+            return _json_error(status.HTTP_404_NOT_FOUND, "Unknown success")
+        success = {"id": success["id"], "name": success["name"], "value": success.get("value", 0)}
 
     try:
         image_payloads = [
