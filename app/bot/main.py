@@ -370,6 +370,8 @@ def build_bot() -> commands.Bot:
     async def on_raw_reaction_add(payload: discord.RawReactionActionEvent) -> None:
         if payload.user_id == bot.user.id or payload.guild_id is None:
             return
+        
+        print(f"RAW REACTION for guild {payload.guild_id} message {payload.message_id} by user {payload.user_id} with emoji {payload.emoji.name}")
 
         # Gérer les réactions pour les règles (règlement accepté)
         await handle_rules_reaction(bot, payload, is_add=True)

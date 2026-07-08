@@ -143,6 +143,7 @@ async def handle_event_reaction(
     
     # Récupérer le message et la réaction de l'événement
     event_message_id, event_reaction = await get_event_message(payload.guild_id)
+    print(f"- Event message ID: {event_message_id}, Event reaction: {event_reaction}")
     
     if event_message_id is None or event_message_id != payload.message_id:
         return
