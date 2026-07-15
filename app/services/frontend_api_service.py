@@ -118,11 +118,24 @@ async def get_unlocked_successes(token: str | None) -> dict[str, Any]:
                 unlocked_list.append(category_name)
             total_points += int(category.get("catValue", 0))
 
+    # Get all ids from succes2 collection that are also in user.achievement
+    succes2_cursor = database["succes2"].find({"id": {"$in": list(achievement_id_set)}})
+    unlocked_list2: list[int] = []
+    difficulte_length_sum = 0
+
+    async for success2 in succes2_cursor:
+        success2_id = success2.get("id")
+        if isinstance(success2_id, int):
+            unlocked_list2.append(success2_id)
+            difficulte = success2.get("difficulte")
+            if isinstance(difficulte, str):
+                difficulte_length_sum += len(difficulte)
+
     return {
         "unlockedList": unlocked_list,
         "totalPoints": total_points,
-        "unlockedList2": user.get("succes2", []),
-        "ticket_count": user.get("ticket", 0),
+        "unlockedList2": unlocked_list2,
+        "ticket_count": difficulte_length_sum,
     }
 
 
