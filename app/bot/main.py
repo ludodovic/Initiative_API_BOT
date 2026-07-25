@@ -36,6 +36,10 @@ from app.services.user_registration_service import (
     build_registration_link,
     create_registered_user,
 )
+from app.services.leave_notification_service import (
+    set_leave_notification_channel,
+    handle_member_leave,
+)
 
 logger = logging.getLogger(__name__)
 APPROVE_EMOJI = "\N{WHITE HEAVY CHECK MARK}"
@@ -98,6 +102,11 @@ def build_bot() -> commands.Bot:
             logger.info("Restored %d roles to %s", roles_restored, member)
 
     @bot.event
+    async def on_member_remove(member: discord.Member) -> None:
+        """Gère le départ d'un membre du serveur."""
+        await handle_member_leave(member)
+
+    @bot.event
     async def on_voice_state_update(
         member: discord.Member,
         before: discord.VoiceState,
@@ -138,6 +147,15 @@ def build_bot() -> commands.Bot:
     ) -> None:
         await set_validation_channel(ctx.guild.id, channel.id)
         await ctx.send(f"Success validation entries will be sent to {channel.mention}.")
+
+    @bot.command(name="set_leave_notification_channel")
+    @commands.check(_has_staff_role)
+    async def set_leave_notification_channel_command(
+        ctx: commands.Context,
+        channel: discord.TextChannel,
+    ) -> None:
+        await set_leave_notification_channel(ctx.guild.id, channel.id)
+        await ctx.send(f"Leave notifications will be sent to {channel.mention}.")
 
     @bot.command(name="degage")
     @commands.check(_has_staff_role)
@@ -366,12 +384,45 @@ def build_bot() -> commands.Bot:
             ephemeral=True,
         )
 
-    @bot.event
-    async def on_raw_reaction_add(payload: discord.RawReactionActionEvent) -> None:
-        if payload.user_id == bot.user.id or payload.guild_id is None:
+    @bot.tree.command(
+        name="set_leave_notification_channel",
+        description="Configure un channel pour les notifications de départ des membres.",
+    )
+    @app_commands.describe(channel="Channel pour les notifications de départ")
+    async def slash_set_leave_notification_channel(
+        interaction: discord.Interaction,
+        channel: discord.TextChannel,
+    ) -> None:
+        if interaction.guild is None:
+            await interaction.response.send_message(
+                "Cette commande ne peut être utilisée que sur un serveur.",
+                ephemeral=True,
+            )
             return
         
-        print(f"RAW REACTION for guild {payload.guild_id} message {payload.message_id} by user {payload.user_id} with emoji {payload.emoji.name}")
+        # Vérifier que l'utilisateur a le rôle STAFF_ROLE_NAME
+        if not isinstance(interaction.user, discord.Member):
+            await interaction.response.send_message(
+                f"Cette commande est réservée aux membres avec le rôle `{STAFF_ROLE_NAME}`.",
+                ephemeral=True,
+            )
+            return
+        
+        if not _member_has_staff_role(interaction.user):
+            await interaction.response.send_message(
+                f"Cette commande est réservée aux membres avec le rôle `{STAFF_ROLE_NAME}`.",
+                ephemeral=True,
+            )
+            return
+        
+        await set_leave_notification_channel(interaction.guild.id, channel.id)
+        await interaction.response.send_message(
+            f"✅ Les notifications de départ des membres seront envoyées dans {channel.mention}.",
+            ephemeral=True,
+        )
+
+    @bot.event
+    async def on_raw_reaction_add(payload: discord.RawReactionActionEvent) -> None:
 
         # Gérer les réactions pour les règles (règlement accepté)
         await handle_rules_reaction(bot, payload, is_add=True)

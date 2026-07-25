@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     claim_upload_dir: str = Field(default="uploads/claims", alias="CLAIM_UPLOAD_DIR")
     api_host: str = Field(default="127.0.0.1", alias="API_HOST")
     api_port: int = Field(default=8000, alias="API_PORT")
+    discord_leave_notification_channel_id: int = Field(default=0, alias="DISCORD_LEAVE_NOTIFICATION_CHANNEL_ID")
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
