@@ -35,6 +35,8 @@ from app.services.temp_voice_service import (
 from app.services.user_registration_service import (
     build_registration_link,
     create_registered_user,
+    sync_all_members_to_bdd,
+    create_or_update_user_from_member,
 )
 from app.services.leave_notification_service import (
     set_leave_notification_channel,
@@ -96,11 +98,15 @@ def build_bot() -> commands.Bot:
 
     @bot.event
     async def on_member_join(member: discord.Member) -> None:
-        """Attribue les rôles sauvegardés à un membre qui rejoint le serveur."""
+        """Attribue les rôles sauvegardés à un membre qui rejoint le serveur et crée l'utilisateur dans la BDD."""
+        
+        # Restaurer les rôles
         roles_restored = await restore_member_roles(member)
         if roles_restored > 0:
             logger.info("Restored %d roles to %s", roles_restored, member)
-
+        # Créer ou mettre à jour l'utilisateur dans la base de données
+        await create_or_update_user_from_member(member)
+        
     @bot.event
     async def on_member_remove(member: discord.Member) -> None:
         """Gère le départ d'un membre du serveur."""
@@ -156,6 +162,21 @@ def build_bot() -> commands.Bot:
     ) -> None:
         await set_leave_notification_channel(ctx.guild.id, channel.id)
         await ctx.send(f"Leave notifications will be sent to {channel.mention}.")
+
+    @bot.command(name="update_member_in_bdd")
+    @commands.check(_has_staff_role)
+    async def update_member_in_bdd_command(ctx: commands.Context) -> None:
+        """Scanne le serveur et ajoute/met à jour tous les membres dans la base de données."""
+        await ctx.send("🔄 Synchronisation des membres avec la base de données en cours...")
+        
+        result = await sync_all_members_to_bdd(ctx.bot)
+        
+        await ctx.send(
+            f"✅ Synchronisation terminée !\n"
+            f"- **Créés**: {result['created']} membres\n"
+            f"- **Mis à jour**: {result['updated']} membres\n"
+            f"- **Ignorés (bots)**: {result['skipped']} membres"
+        )
 
     @bot.command(name="degage")
     @commands.check(_has_staff_role)
@@ -418,6 +439,48 @@ def build_bot() -> commands.Bot:
         await set_leave_notification_channel(interaction.guild.id, channel.id)
         await interaction.response.send_message(
             f"✅ Les notifications de départ des membres seront envoyées dans {channel.mention}.",
+            ephemeral=True,
+        )
+
+    @bot.tree.command(
+        name="update_member_in_bdd",
+        description="Scanne le serveur et synchronise tous les membres avec la base de données.",
+    )
+    async def slash_update_member_in_bdd(interaction: discord.Interaction) -> None:
+        if interaction.guild is None:
+            await interaction.response.send_message(
+                "Cette commande ne peut être utilisée que sur un serveur.",
+                ephemeral=True,
+            )
+            return
+        
+        # Vérifier que l'utilisateur a le rôle STAFF_ROLE_NAME
+        if not isinstance(interaction.user, discord.Member):
+            await interaction.response.send_message(
+                f"Cette commande est réservée aux membres avec le rôle `{STAFF_ROLE_NAME}`.",
+                ephemeral=True,
+            )
+            return
+        
+        if not _member_has_staff_role(interaction.user):
+            await interaction.response.send_message(
+                f"Cette commande est réservée aux membres avec le rôle `{STAFF_ROLE_NAME}`.",
+                ephemeral=True,
+            )
+            return
+        
+        await interaction.response.send_message(
+            "🔄 Synchronisation des membres avec la base de données en cours...",
+            ephemeral=True,
+        )
+        
+        result = await sync_all_members_to_bdd(interaction.client)
+        
+        await interaction.followup.send(
+            f"✅ Synchronisation terminée !\n"
+            f"- **Créés**: {result['created']} membres\n"
+            f"- **Mis à jour**: {result['updated']} membres\n"
+            f"- **Ignorés (bots)**: {result['skipped']} membres",
             ephemeral=True,
         )
 
