@@ -106,7 +106,7 @@ def build_bot() -> commands.Bot:
             logger.info("Restored %d roles to %s", roles_restored, member)
         # Créer ou mettre à jour l'utilisateur dans la base de données
         await create_or_update_user_from_member(member)
-        
+
     @bot.event
     async def on_member_remove(member: discord.Member) -> None:
         """Gère le départ d'un membre du serveur."""
@@ -486,7 +486,9 @@ def build_bot() -> commands.Bot:
 
     @bot.event
     async def on_raw_reaction_add(payload: discord.RawReactionActionEvent) -> None:
-
+        if payload.user_id == bot.user.id or payload.guild_id is None:
+            return
+        
         # Gérer les réactions pour les règles (règlement accepté)
         await handle_rules_reaction(bot, payload, is_add=True)
         
