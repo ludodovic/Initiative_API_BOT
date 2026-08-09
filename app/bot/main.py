@@ -46,7 +46,7 @@ from app.services.leave_notification_service import (
 logger = logging.getLogger(__name__)
 APPROVE_EMOJI = "\N{WHITE HEAVY CHECK MARK}"
 REFUSE_EMOJI = "\N{CROSS MARK}"
-STAFF_ROLE_NAME = "Conseiller"
+STAFF_ROLE_NAME = ["Conseiller", "Conseiller Intérimaire"]  # List of staff role names
 
 
 def build_bot() -> commands.Bot:
@@ -124,7 +124,7 @@ def build_bot() -> commands.Bot:
     @bot.event
     async def on_command_error(ctx: commands.Context, error: commands.CommandError) -> None:
         if isinstance(error, commands.CheckFailure):
-            await ctx.send(f"This command is reserved for the `{STAFF_ROLE_NAME}` role.")
+            await ctx.send(f"This command is reserved for the `{STAFF_ROLE_NAME[0]}` role.")
             return
         raise error
 
@@ -421,17 +421,17 @@ def build_bot() -> commands.Bot:
             )
             return
         
-        # Vérifier que l'utilisateur a le rôle STAFF_ROLE_NAME
+        # Vérifier que l'utilisateur a le rôle STAFF_ROLE_NAME[0]
         if not isinstance(interaction.user, discord.Member):
             await interaction.response.send_message(
-                f"Cette commande est réservée aux membres avec le rôle `{STAFF_ROLE_NAME}`.",
+                f"Cette commande est réservée aux membres avec le rôle `{STAFF_ROLE_NAME[0]}`.",
                 ephemeral=True,
             )
             return
         
         if not _member_has_staff_role(interaction.user):
             await interaction.response.send_message(
-                f"Cette commande est réservée aux membres avec le rôle `{STAFF_ROLE_NAME}`.",
+                f"Cette commande est réservée aux membres avec le rôle `{STAFF_ROLE_NAME[0]}`.",
                 ephemeral=True,
             )
             return
@@ -454,17 +454,17 @@ def build_bot() -> commands.Bot:
             )
             return
         
-        # Vérifier que l'utilisateur a le rôle STAFF_ROLE_NAME
+        # Vérifier que l'utilisateur a le rôle STAFF_ROLE_NAME[0]
         if not isinstance(interaction.user, discord.Member):
             await interaction.response.send_message(
-                f"Cette commande est réservée aux membres avec le rôle `{STAFF_ROLE_NAME}`.",
+                f"Cette commande est réservée aux membres avec le rôle `{STAFF_ROLE_NAME[0]}`.",
                 ephemeral=True,
             )
             return
         
         if not _member_has_staff_role(interaction.user):
             await interaction.response.send_message(
-                f"Cette commande est réservée aux membres avec le rôle `{STAFF_ROLE_NAME}`.",
+                f"Cette commande est réservée aux membres avec le rôle `{STAFF_ROLE_NAME[0]}`.",
                 ephemeral=True,
             )
             return
@@ -674,7 +674,7 @@ def _has_staff_role(ctx: commands.Context) -> bool:
 
 
 def _member_has_staff_role(member: discord.Member) -> bool:
-    return any(role.name == STAFF_ROLE_NAME for role in member.roles)
+    return any(role.name in STAFF_ROLE_NAME for role in member.roles)
 
 
 def _parse_prefix_success_arguments(
