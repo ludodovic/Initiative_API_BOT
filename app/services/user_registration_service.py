@@ -19,8 +19,15 @@ async def create_registered_user(
     database = await get_database()
     users = database[USER_COLLECTION]
 
-    existing_user = await users.find_one({"discord_username": discord_username})
+    existing_user = await users.find_one({"discord_id": discord_id}) if discord_id is not None else None
+    if existing_user is None:
+        existing_user = await users.find_one({"discord_username": discord_username})
     if existing_user is not None:
+        await users.update_one(
+            {"_id": existing_user["_id"]},
+            {"$set": {"discord_id": discord_id, "discord_username": discord_username, "dofus_username": dofus_username, "roles": roles}},
+        )
+        existing_user.update({"discord_id": discord_id, "discord_username": discord_username, "dofus_username": dofus_username, "roles": roles})
         return _serialize_user(existing_user)
 
     last_user = await users.find_one(sort=[("id", -1)])
