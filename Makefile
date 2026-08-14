@@ -11,7 +11,7 @@ help:
 	@echo "make clean Stop the stack and delete local MongoDB data"
 
 up:
-	$(COMPOSE) up --build --detach
+	$(COMPOSE) up --build
 
 seed: up
 	$(COMPOSE) exec api python -m app.scripts.seed_local_data

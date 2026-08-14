@@ -55,7 +55,7 @@ def is_draft_admin(user: dict[str, Any]) -> bool:
 async def get_roster() -> list[dict[str, Any]]:
     database = await get_database()
     cursor = database[USER_COLLECTION].find(
-        {"id": {"$type": "number"}, "discord_id": {"$type": "number"}},
+        {"id": {"$type": "number"}},
         {"_id": 0, "id": 1, "dofus_username": 1, "class": 1},
     ).sort("id", 1)
     return [user async for user in cursor]

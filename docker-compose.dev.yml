@@ -22,9 +22,8 @@ services:
     command: uvicorn app.api.main:app --host 0.0.0.0 --port 8000 --reload
     ports:
       - "127.0.0.1:8000:8000"
-    environment:
-      MONGODB_URI: mongodb://mongo:27017
-      MONGODB_DATABASE: initiative_dev
+    env_file:
+      - .env
     volumes:
       - .:/app
     depends_on:
