@@ -1,0 +1,19 @@
+name: initiative-local
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    command: python -m app.main
+    ports:
+      - "127.0.0.1:8000:8000"
+    env_file:
+      - .env
+    environment:
+      API_HOST: 0.0.0.0
+    volumes:
+      - .:/app
+
+volumes:
+  initiative_dev_mongo_data:
