@@ -14,9 +14,6 @@ services:
       API_HOST: 0.0.0.0
     volumes:
       - .:/app
-    depends_on:
-      mongo:
-        condition: service_healthy
 
 volumes:
   initiative_dev_mongo_data:
