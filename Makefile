@@ -3,9 +3,8 @@ COMPOSE := docker compose -f docker-compose.dev.yml
 .PHONY: help up seed dev logs down clean
 
 help:
-	@echo "make dev   Start the local API and MongoDB, then seed fixture users"
-	@echo "make up    Start the local API and MongoDB"
-	@echo "make seed  Seed local fixture users"
+	@echo "make dev   Start the local API"
+	@echo "make up    Build"
 	@echo "make logs  Follow local API and MongoDB logs"
 	@echo "make down  Stop the local stack"
 	@echo "make clean Stop the stack and delete local MongoDB data"
@@ -13,10 +12,7 @@ help:
 up:
 	$(COMPOSE) up --build
 
-seed: up
-	$(COMPOSE) exec api python -m app.scripts.seed_local_data
-
-dev: seed
+dev: up
 
 logs:
 	$(COMPOSE) logs --follow api mongo
