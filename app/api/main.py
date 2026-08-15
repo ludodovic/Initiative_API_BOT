@@ -1,7 +1,7 @@
 from contextlib import asynccontextmanager
 import logging
 
-from typing import Any
+from typing import Any, Annotated
 
 from fastapi import Body, FastAPI, File, Form, Header, UploadFile, status
 from fastapi.responses import JSONResponse
@@ -442,7 +442,7 @@ async def api_claim_success(
     successName: str = Form(...),
     successDescription: str = Form(...),
     description: str = Form(default=""),
-    images: list[UploadFile] | None = File(default=None),
+    images: Annotated[list[UploadFile], File()] = [],
     authorization: str | None = Header(default=None),
 ) -> JSONResponse:
     user = await get_user_by_token(_extract_bearer_token(authorization))
