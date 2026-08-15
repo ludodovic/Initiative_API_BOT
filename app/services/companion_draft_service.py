@@ -10,14 +10,14 @@ from app.db import get_database
 
 DRAFT_COLLECTION = "companion_drafts"
 USER_COLLECTION = "users"
-BAN_TURNS = ("A", "B", "A", "B")
+BAN_COUNT = 4
 PICK_TURNS = ("B", "A", "B", "A")
 
-# Canonical DofusDB companion ids and their French labels (52 entries).
+# Canonical DofusDB companion ids and their French labels (Lumino skins are one entry).
 COMPANIONS: dict[int, str] = {
     1: "Lumino", 2: "Skale", 6: "Masse", 7: "Scoreur", 8: "Korbax", 9: "Ombre",
     11: "Chevalier d'Astrub", 12: "Krosmoglob", 14: "Malle O'Kranh", 15: "Éclaireur spectral",
-    16: "Toxine", 17: "Archiduk", 55: "Lumino Star", 56: "Ténèbre", 57: "Nuage",
+    16: "Toxine", 17: "Archiduk", 56: "Ténèbre", 57: "Nuage",
     58: "Goutte", 59: "Feuille", 60: "Flamme", 61: "Riktus fine-lame", 62: "Riktus archer",
     63: "Riktus baroudeur", 64: "Riktus ensorceleuse", 65: "Grüt", 66: "Koksis",
     67: "Gobeuf", 68: "Laikteur", 69: "Rekto Topi", 70: "Grizou", 71: "Kloug",
@@ -186,8 +186,25 @@ async def present_draft(draft: dict[str, Any], user: dict[str, Any]) -> dict[str
             {"_id": 0, "id": 1, "dofus_username": 1, "class": 1},
         )
     }
-    bans = {int(entry["companionId"]) for entry in draft["bans"]}
-    picks = {int(entry["companionId"]): str(entry["team"]) for entry in draft["picks"]}
+    bans = {_canonical_companion_id(int(entry["companionId"])): str(entry["team"]) for entry in draft["bans"]}
+    picks = {_canonical_companion_id(int(entry["companionId"])): str(entry["team"]) for entry in draft["picks"]}
+    tournament = await database["companion_tournaments"].find_one(
+        {"tournamentId": draft["tournamentId"]}, {"_id": 0, "teams": 1, "matches": 1}
+    )
+    match = next((item for item in (tournament or {}).get("matches", []) if item.get("matchId") == draft["matchId"]), {})
+    tournament_teams = {team["teamId"]: team for team in (tournament or {}).get("teams", [])}
+    team_ids = match.get("teamIds", [])
+    draft_teams = {
+        side: tournament_teams.get(team_id, {})
+        for side, team_id in zip(("A", "B"), team_ids)
+    }
+    actions = [
+        {"sequence": index + 1, "type": "ban", "teamId": str(entry["team"]), "companionId": _canonical_companion_id(int(entry["companionId"]))}
+        for index, entry in enumerate(draft["bans"])
+    ] + [
+        {"sequence": len(draft["bans"]) + index + 1, "type": "pick", "teamId": str(entry["team"]), "companionId": _canonical_companion_id(int(entry["companionId"]))}
+        for index, entry in enumerate(draft["picks"])
+    ]
     current_team = draft.get("currentTeam")
     user_id = user.get("id")
     can_act = (
@@ -209,7 +226,8 @@ async def present_draft(draft: dict[str, Any], user: dict[str, Any]) -> dict[str
         "teams": [
             {
                 "id": team_id,
-                "name": f"Équipe {team_id}",
+                "tournamentTeamId": draft_teams[team_id].get("teamId"),
+                "name": str(draft_teams[team_id].get("name", f"Équipe {team_id}")),
                 "users": [users.get(member_id, {"id": member_id, "dofus_username": "Joueur inconnu", "class": "undefined"}) for member_id in draft[f"team{team_id}UserIds"]],
             }
             for team_id in ("A", "B")
@@ -220,10 +238,11 @@ async def present_draft(draft: dict[str, Any], user: dict[str, Any]) -> dict[str
                 "name": name,
                 "image": _companion_image_url(name),
                 "status": "banned" if companion_id in bans else "picked" if companion_id in picks else "available",
-                "teamId": picks.get(companion_id),
+                "teamId": bans.get(companion_id) or picks.get(companion_id),
             }
             for companion_id, name in COMPANIONS.items()
         ],
+        "actions": actions,
     }
 
 
@@ -269,11 +288,12 @@ async def select_companion(
         raise DraftError(403, "Only a member of the current team can act")
 
     actions = draft[f"{action}s"]
-    turns = BAN_TURNS if action == "ban" else PICK_TURNS
+    turns = range(BAN_COUNT) if action == "ban" else PICK_TURNS
     action_index = len(actions)
     if action_index >= len(turns):
         raise DraftError(409, "This phase is complete")
-    next_phase, next_team, next_status = _next_turn(action, action_index)
+    next_phase, next_team, next_status = _next_turn(action, action_index, str(current_team))
+    used_companion_ids = [companion_id, 55] if companion_id == 1 else [companion_id]
     update = {
         "$push": {f"{action}s": {"team": current_team, "companionId": companion_id}},
         "$addToSet": {"usedCompanionIds": companion_id},
@@ -282,7 +302,7 @@ async def select_companion(
     return await _atomic_update(
         draft_id,
         version_number,
-        {"status": "drafting", "currentPhase": action, "currentTeam": current_team, "usedCompanionIds": {"$ne": companion_id}},
+        {"status": "drafting", "currentPhase": action, "currentTeam": current_team, "usedCompanionIds": {"$nin": used_companion_ids}},
         update,
     )
 
@@ -346,10 +366,12 @@ def _require_version(version: Any) -> int:
     return version
 
 
-def _next_turn(action: str, action_index: int) -> tuple[str, str | None, str]:
-    if action == "ban" and action_index == len(BAN_TURNS) - 1:
+def _next_turn(action: str, action_index: int, current_team: str) -> tuple[str, str | None, str]:
+    if action == "ban" and action_index == BAN_COUNT - 1:
         return "pick", PICK_TURNS[0], "drafting"
-    turns = BAN_TURNS if action == "ban" else PICK_TURNS
+    if action == "ban":
+        return "ban", "B" if current_team == "A" else "A", "drafting"
+    turns = PICK_TURNS
     if action == "pick" and action_index == len(PICK_TURNS) - 1:
         return "complete", None, "complete"
     return action, turns[action_index + 1], "drafting"
@@ -362,6 +384,11 @@ def _turn_label(draft: dict[str, Any]) -> str:
         return "Draft terminé."
     action = "bannir" if draft["currentPhase"] == "ban" else "choisir"
     return f"Équipe {draft['currentTeam']} doit {action} un compagnon."
+
+
+def _canonical_companion_id(companion_id: int) -> int:
+    """Treat the retired Lumino Star skin as the standard Lumino companion."""
+    return 1 if companion_id == 55 else companion_id
 
 
 def _companion_image_url(name: str) -> str:
