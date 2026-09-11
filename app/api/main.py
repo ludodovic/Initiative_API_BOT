@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 import logging
 
 from typing import Any
+from urllib.parse import unquote
 
 from fastapi import Body, FastAPI, File, Form, Header, Request, UploadFile, status
 from fastapi.exceptions import RequestValidationError
@@ -18,10 +19,12 @@ from app.db import close_mongo_client, get_database
 from app.services import (
     InvalidProfilePicture,
     add_user_secondary_class,
+    can_view_player_profiles,
     create_success_claim,
     delete_user_picture,
     get_calendar_events,
     get_full_user_profile,
+    get_player_profile,
     get_latest_newsletter,
     get_success2_catalog,
     get_success_catalog,
@@ -35,6 +38,7 @@ from app.services import (
     get_user_presentation,
     get_user_profile,
     get_user_validation_history,
+    list_displayable_profiles,
     parse_birthday,
     profile_picture_upload_directory,
     remove_user_secondary_class,
@@ -156,6 +160,41 @@ async def api_user(authorization: str | None = Header(default=None)) -> JSONResp
         return _unauthorized()
 
     return JSONResponse(status_code=status.HTTP_200_OK, content=user)
+
+
+@app.get("/api/profiles")
+async def api_profiles(
+    authorization: str | None = Header(default=None),
+) -> JSONResponse:
+    viewer = await get_user_by_token(_extract_bearer_token(authorization))
+    if viewer is None:
+        return _unauthorized()
+    if not can_view_player_profiles(viewer):
+        return _profiles_forbidden()
+
+    profiles = await list_displayable_profiles()
+    return JSONResponse(status_code=status.HTTP_200_OK, content=profiles)
+
+
+@app.get("/api/profiles/{dofus_username}")
+async def api_player_profile(
+    dofus_username: str,
+    authorization: str | None = Header(default=None),
+) -> JSONResponse:
+    viewer = await get_user_by_token(_extract_bearer_token(authorization))
+    if viewer is None:
+        return _unauthorized()
+    if not can_view_player_profiles(viewer):
+        return _profiles_forbidden()
+
+    profile = await get_player_profile(unquote(dofus_username))
+    if profile is None:
+        return _json_error(
+            status.HTTP_404_NOT_FOUND,
+            "PROFILE_NOT_FOUND",
+            "Player profile not found",
+        )
+    return JSONResponse(status_code=status.HTTP_200_OK, content=profile)
 
 
 @app.post("/api/user/class")
@@ -604,6 +643,14 @@ def _internal_error() -> JSONResponse:
         status.HTTP_500_INTERNAL_SERVER_ERROR,
         "INTERNAL_ERROR",
         "An unexpected error occurred",
+    )
+
+
+def _profiles_forbidden() -> JSONResponse:
+    return _json_error(
+        status.HTTP_403_FORBIDDEN,
+        "FORBIDDEN",
+        "Not authorized to view player profiles",
     )
 
 

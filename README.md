@@ -120,6 +120,8 @@ The API exposes only the frontend routes used by the Angular app:
 - `POST /api/succes/claim`
 - `GET /api/user`
 - `GET /api/user/profile`
+- `GET /api/profiles`
+- `GET /api/profiles/{dofus_username}`
 - `POST /api/user/class`
 - `GET|POST /api/user/birthday`
 - `GET|POST /api/user/presentation`
@@ -176,3 +178,8 @@ database migration is required. Profile pictures are stored under
 `PROFILE_PICTURE_UPLOAD_DIR` and served at `/uploads/profile-pictures/...`.
 Set `API_PUBLIC_URL` when picture responses need an absolute URL, and configure
 allowed frontend origins as a comma-separated `CORS_ORIGINS` value.
+
+`GET /api/profiles` returns members with a non-empty presentation and class.
+`GET /api/profiles/{dofus_username}` returns one member using an exact username
+match, including incomplete profiles. Both routes are read-only and require the
+authenticated viewer to have an `Initiateur`, `Assemblée`, or `Conseiller` role.

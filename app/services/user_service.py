@@ -15,6 +15,19 @@ VALID_DOFUS_CLASSES = [
     "Forge", "Hupper", "Eca", "Xel", "Elio", "Roub", "Sram", "Sadi",
     "Eni", "Ougi", "Osa",
 ]
+DISPLAYABLE_GUILD_ROLES = ("Initiateur", "Assemblée", "Conseiller")
+
+PUBLIC_PROFILE_PROJECTION = {
+    "_id": 0,
+    "dofus_username": 1,
+    "class": 1,
+    "profile_picture_url": 1,
+    "birthday": 1,
+    "birthday_wish": 1,
+    "presentation": 1,
+    "secondary_classes": 1,
+    "roles": 1,
+}
 
 PROFILE_PICTURE_MAX_SIZE = 5 * 1024 * 1024
 PROFILE_PICTURE_SUPPORTED_TYPES = {"image/png": "png", "image/jpeg": "jpg"}
@@ -71,6 +84,33 @@ async def get_user_by_token(token: str | None) -> dict[str, Any] | None:
     database = await get_database()
     user = await database["users"].find_one({"token": token})
     return _serialize(user) if user else None
+
+
+def can_view_player_profiles(user: dict[str, Any]) -> bool:
+    roles = user.get("roles")
+    return isinstance(roles, list) and any(
+        role in DISPLAYABLE_GUILD_ROLES for role in roles
+    )
+
+
+async def list_displayable_profiles() -> list[dict[str, Any]]:
+    database = await get_database()
+    cursor = database["users"].find(
+        {
+            "presentation": {"$type": "string", "$regex": r"\S"},
+            "class": {"$type": "string", "$regex": r"\S"},
+        },
+        PUBLIC_PROFILE_PROJECTION,
+    ).sort("dofus_username", 1)
+    return [_format_public_profile(user) async for user in cursor]
+
+
+async def get_player_profile(dofus_username: str) -> dict[str, Any] | None:
+    database = await get_database()
+    user = await database["users"].find_one(
+        {"dofus_username": dofus_username}, PUBLIC_PROFILE_PROJECTION
+    )
+    return _format_public_profile(user) if user is not None else None
 
 
 async def get_user_birthday(token: str | None) -> dict[str, Any] | None:
@@ -333,6 +373,40 @@ def _format_user_profile(user: dict[str, Any]) -> dict[str, str]:
     return {
         "dofus_username": str(user.get("dofus_username", "")),
         "class": _main_class(user),
+    }
+
+
+def _format_public_profile(user: dict[str, Any]) -> dict[str, Any]:
+    class_name = user.get("class")
+    if not isinstance(class_name, str) or not class_name.strip():
+        class_name = None
+
+    presentation = user.get("presentation")
+    if not isinstance(presentation, str):
+        presentation = None
+
+    wish = user.get("birthday_wish")
+    if not isinstance(wish, str):
+        wish = None
+
+    stored_roles = user.get("roles")
+    if not isinstance(stored_roles, list):
+        stored_roles = []
+    roles = [role for role in DISPLAYABLE_GUILD_ROLES if role in stored_roles]
+
+    return {
+        "dofus_username": str(user.get("dofus_username", "")),
+        "class": class_name,
+        "profile_picture_url": _public_picture_url(
+            user.get("profile_picture_url")
+        ),
+        "birthday": _format_birthday(user.get("birthday")),
+        "wish": wish,
+        "presentation": presentation,
+        "secondary_classes": _clean_stored_classes(
+            user.get("secondary_classes"), class_name or ""
+        ),
+        "roles": roles,
     }
 
 
