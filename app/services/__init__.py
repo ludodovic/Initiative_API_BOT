@@ -19,24 +19,29 @@ from app.services.success_validation_service import (
 )
 from app.services.user_registration_service import create_registered_user
 from app.services.user_service import (
+    InvalidProfilePicture,
     add_user_secondary_class,
     delete_user_picture,
+    get_full_user_profile,
     get_total_season2_tickets,
     get_user_birthday,
     get_user_by_token,
     get_user_classes,
     get_user_picture,
     get_user_presentation,
+    get_user_profile,
+    parse_birthday,
+    profile_picture_upload_directory,
     remove_user_secondary_class,
     update_user_birthday,
     update_user_class,
     update_user_picture,
     update_user_presentation,
     update_user_secondary_classes,
-    get_user_profile,
 )
 
 __all__ = [
+    "InvalidProfilePicture",
     "add_user_secondary_class",
     "approve_validation",
     "create_registered_user",
@@ -45,6 +50,7 @@ __all__ = [
     "delete_user_picture",
     "find_success",
     "get_calendar_events",
+    "get_full_user_profile",
     "get_latest_newsletter",
     "get_success2_catalog",
     "get_success_catalog",
@@ -60,6 +66,8 @@ __all__ = [
     "get_validation_channel",
     "get_validation_request",
     "get_user_validation_history",
+    "parse_birthday",
+    "profile_picture_upload_directory",
     "refuse_validation",
     "remove_user_secondary_class",
     "set_validation_channel",

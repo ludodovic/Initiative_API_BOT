@@ -30,6 +30,18 @@ uvicorn app.api.main:app --reload
 
 The API will be available at `http://127.0.0.1:8000`.
 
+### Run the API with Docker
+
+```powershell
+docker build -t initiative-api .
+docker run --rm -p 8000:8000 --env-file .env -v initiative-uploads:/app/uploads initiative-api
+```
+
+The container runs the API as a non-root user. The named volume preserves claim
+images and profile pictures across container replacements.
+Ensure `MONGODB_URI` points to a host reachable from the container (for example,
+`host.docker.internal` for MongoDB running directly on the Docker host).
+
 ## Run the Discord Bot
 
 ```powershell
@@ -102,25 +114,36 @@ The API exposes only the frontend routes used by the Angular app:
 
 - `GET /api/succes/unlock`
 - `GET /api/succes`
+- `GET /api/succes2`
+- `GET /api/succes2/total-tickets`
 - `GET /api/succes/leaderboard`
 - `POST /api/succes/claim`
 - `GET /api/user`
+- `GET /api/user/profile`
 - `POST /api/user/class`
+- `GET|POST /api/user/birthday`
+- `GET|POST /api/user/presentation`
+- `GET|POST /api/user/classes`
+- `POST /api/user/classes/add`
+- `POST /api/user/classes/remove`
+- `GET|POST|DELETE /api/user/picture`
 - `GET /api/news/calendar`
 - `GET /api/news/letter`
 
-`GET /api/succes/unlock` reads the token from:
+User and success routes read the authentication token from:
 
 ```text
 Authorization: Bearer TOKEN
 ```
 
-If the token is missing or invalid, the API returns:
+If the token is missing or invalid, the API returns HTTP 401. Validation and API
+errors use this shape:
 
 ```json
 {
-  "unlockedList": [],
-  "totalPoints": 0
+  "error": "UNAUTHORIZED",
+  "message": "Authentication token required",
+  "details": null
 }
 ```
 
@@ -144,6 +167,12 @@ The API accepts PNG and JPG/JPEG images, keeps only the first 3 images, resizes 
 
 ```json
 {
-  "class": "Cra"
+  "class": "Crâ"
 }
 ```
+
+The profile fields are stored directly on the MongoDB `users` documents, so no
+database migration is required. Profile pictures are stored under
+`PROFILE_PICTURE_UPLOAD_DIR` and served at `/uploads/profile-pictures/...`.
+Set `API_PUBLIC_URL` when picture responses need an absolute URL, and configure
+allowed frontend origins as a comma-separated `CORS_ORIGINS` value.
