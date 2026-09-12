@@ -524,7 +524,7 @@ async def api_claim_success(
     successName: str = Form(...),
     successDescription: str = Form(...),
     description: str = Form(default=""),
-    images: list[UploadFile] | None = File(default=None),
+    images: list[UploadFile] = File(default=[]),
     authorization: str | None = Header(default=None),
 ) -> JSONResponse:
     user = await get_user_by_token(_extract_bearer_token(authorization))
@@ -546,12 +546,14 @@ async def api_claim_success(
             return _json_error(status.HTTP_404_NOT_FOUND, "Unknown success")
 
     try:
-        if success_saisson == 2 and not images:
-            if images is None or len(images) == 0:
-                image_payloads = []
+        if not images:
+            if success_saisson == 1:
+                return _json_error(
+                    status.HTTP_400_BAD_REQUEST,
+                    "At least one image is required",
+                )
+            image_payloads = []
         else:
-            if not images:
-                return _json_error(status.HTTP_400_BAD_REQUEST, "At least one image is required")
             selected_images = images[:3]
             content_types = [image.content_type or "" for image in selected_images]
             if not validate_image_content_types(content_types):
