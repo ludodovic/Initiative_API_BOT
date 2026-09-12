@@ -348,12 +348,19 @@ async def delete_user_picture(token: str | None) -> dict[str, Any] | None:
 
 async def get_total_season2_tickets() -> dict[str, int]:
     database = await get_database()
-    successes = database["succes2"].find({}, {"_id": 0, "difficulte": 1})
+    successes = database["succes2"].find(
+        {}, {"_id": 0, "difficulte": 1, "bonus_ticket_count": 1}
+    )
     total = 0
     async for success in successes:
         difficulty = success.get("difficulte")
         if isinstance(difficulty, str):
             total += len(difficulty)
+        bonus_ticket_count = success.get("bonus_ticket_count")
+        if isinstance(bonus_ticket_count, int) and not isinstance(
+            bonus_ticket_count, bool
+        ):
+            total += bonus_ticket_count
     return {"total": total}
 
 

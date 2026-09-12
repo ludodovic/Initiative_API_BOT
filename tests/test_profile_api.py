@@ -117,5 +117,53 @@ class ProfileValidationTests(unittest.TestCase):
                 )
 
 
+class FakeSuccessCursor:
+    def __init__(self, successes):
+        self.successes = iter(successes)
+
+    def __aiter__(self):
+        return self
+
+    async def __anext__(self):
+        try:
+            return next(self.successes)
+        except StopIteration as exc:
+            raise StopAsyncIteration from exc
+
+
+class FakeSuccessCollection:
+    def __init__(self, successes):
+        self.successes = successes
+        self.find_args = None
+
+    def find(self, *args):
+        self.find_args = args
+        return FakeSuccessCursor(self.successes)
+
+
+class SeasonTwoTicketTests(unittest.IsolatedAsyncioTestCase):
+    async def test_total_includes_bonus_ticket_count(self):
+        successes = FakeSuccessCollection(
+            [
+                {"difficulte": "***", "bonus_ticket_count": 2},
+                {"difficulte": "*", "bonus_ticket_count": 4},
+                {"difficulte": "**"},
+                {"difficulte": "*", "bonus_ticket_count": True},
+            ]
+        )
+        with patch.object(
+            user_service,
+            "get_database",
+            AsyncMock(return_value={"succes2": successes}),
+        ):
+            result = await user_service.get_total_season2_tickets()
+
+        self.assertEqual(result, {"total": 13})
+        self.assertEqual(
+            successes.find_args,
+            ({}, {"_id": 0, "difficulte": 1, "bonus_ticket_count": 1}),
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
