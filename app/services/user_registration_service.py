@@ -1,13 +1,14 @@
 import secrets
-from datetime import datetime
+import logging
+from datetime import UTC, datetime
 from typing import Any
 
 import discord
 from app.db import get_database
-from app.config import get_settings
 
 
 USER_COLLECTION = "users"
+logger = logging.getLogger(__name__)
 
 
 async def create_registered_user(
@@ -63,7 +64,9 @@ async def create_or_update_user_from_member(member: discord.Member) -> dict[str,
     
     # Get the join date
     joined_at = member.joined_at
-    joined_server_date = joined_at.isoformat() if joined_at else datetime.utcnow().isoformat()
+    joined_server_date = (
+        joined_at.isoformat() if joined_at else datetime.now(UTC).isoformat()
+    )
     
     # Check if user exists by discord_id first
     existing_user = await users.find_one({"discord_id": member.id})
@@ -122,95 +125,91 @@ async def create_or_update_user_from_member(member: discord.Member) -> dict[str,
     return _serialize_user(user)
 
 
-async def sync_all_members_to_bdd(bot: discord.Client) -> dict[str, int]:
+async def sync_all_members_to_bdd(guild: discord.Guild) -> dict[str, int]:
     """
-    Scan the configured guild and sync all members to the users collection.
+    Fetch and sync every non-bot member from the guild that invoked the command.
     Creates users for members not in the database and updates existing ones.
-    Returns a dict with counts: created, updated, skipped.
+    Existing profile fields that are not sourced from Discord are preserved.
     """
-    settings = get_settings()
-    
-    if settings.discord_guild_id == 0:
-        return {"created": 0, "updated": 0, "skipped": 0}
-    
-    guild = bot.get_guild(settings.discord_guild_id)
-    
-    if guild is None:
-        return {"created": 0, "updated": 0, "skipped": 0}
-    
     database = await get_database()
     users = database[USER_COLLECTION]
-    
+
     created = 0
     updated = 0
+    unchanged = 0
     skipped = 0
-    
-    for member in guild.members:
-        # Skip bots
+    failed = 0
+
+    try:
+        members = [member async for member in guild.fetch_members(limit=None)]
+    except (discord.Forbidden, discord.HTTPException) as exc:
+        raise RuntimeError(
+            "Unable to fetch all guild members. Check the Server Members Intent "
+            "and the bot's guild permissions."
+        ) from exc
+
+    for member in members:
         if member.bot:
             skipped += 1
             continue
-        
+
         discord_username = str(member)
         dofus_username = member.nick or member.display_name or str(member)
         roles = [role.name for role in member.roles if role.name != "@everyone"]
         joined_at = member.joined_at
-        joined_server_date = joined_at.isoformat() if joined_at else datetime.utcnow().isoformat()
-        
-        # Check if user exists
-        existing_user = await users.find_one({"discord_id": member.id})
-        
-        if existing_user is not None:
-            # Update existing user
-            await users.update_one(
-                {"discord_id": member.id},
-                {
-                    "$set": {
-                        "discord_username": discord_username,
-                        "dofus_username": dofus_username,
-                        "roles": roles,
-                        "joined_server": joined_server_date,
-                    }
-                }
-            )
-            updated += 1
-            continue
-        
-        # Check by discord_username
-        existing_user = await users.find_one({"discord_username": discord_username})
-        
-        if existing_user is not None:
-            # Update with discord_id
-            await users.update_one(
-                {"discord_username": discord_username},
-                {
-                    "$set": {
-                        "discord_id": member.id,
-                        "dofus_username": dofus_username,
-                        "roles": roles,
-                        "joined_server": joined_server_date,
-                    }
-                }
-            )
-            updated += 1
-            continue
-        
-        # Create new user
-        last_user = await users.find_one(sort=[("id", -1)])
-        next_id = int(last_user["id"]) + 1 if last_user and "id" in last_user else 1
-        
-        user = {
-            "id": next_id,
+        joined_server_date = (
+            joined_at.isoformat()
+            if joined_at is not None
+            else datetime.now(UTC).isoformat()
+        )
+        discord_fields = {
             "discord_id": member.id,
             "discord_username": discord_username,
             "dofus_username": dofus_username,
             "roles": roles,
-            "achievement": [],
             "joined_server": joined_server_date,
-            "token": secrets.token_urlsafe(32),
         }
-        
-        await users.insert_one(user)
-        created += 1
-    
-    return {"created": created, "updated": updated, "skipped": skipped}
+
+        try:
+            existing_user = await users.find_one({"discord_id": member.id})
+            lookup = {"discord_id": member.id}
+            if existing_user is None:
+                existing_user = await users.find_one(
+                    {"discord_username": discord_username}
+                )
+                lookup = {"discord_username": discord_username}
+
+            if existing_user is not None:
+                result = await users.update_one(lookup, {"$set": discord_fields})
+                if result.modified_count:
+                    updated += 1
+                else:
+                    unchanged += 1
+                continue
+
+            last_user = await users.find_one(sort=[("id", -1)])
+            next_id = (
+                int(last_user["id"]) + 1
+                if last_user is not None and "id" in last_user
+                else 1
+            )
+            await users.insert_one(
+                {
+                    "id": next_id,
+                    **discord_fields,
+                    "achievement": [],
+                    "token": secrets.token_urlsafe(32),
+                }
+            )
+            created += 1
+        except Exception:
+            failed += 1
+            logger.exception("Failed to synchronize Discord member %s", member.id)
+
+    return {
+        "created": created,
+        "updated": updated,
+        "unchanged": unchanged,
+        "skipped": skipped,
+        "failed": failed,
+    }

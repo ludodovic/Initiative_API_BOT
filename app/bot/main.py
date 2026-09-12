@@ -65,20 +65,22 @@ def build_bot() -> commands.Bot:
         nonlocal slash_commands_synced
         logger.info("Discord bot connected as %s", bot.user)
         
-        # Synchroniser les commandes slash sur TOUS les serveurs
         if not slash_commands_synced:
-            # Synchronisation globale pour tous les serveurs
-            await bot.tree.sync()
-            
-            # Synchroniser explicitement sur chaque serveur pour une propagation immédiate
-            for guild in bot.guilds:
-                try:
-                    await bot.tree.sync(guild=discord.Object(id=guild.id))
-                except Exception as e:
-                    logger.warning(f"Failed to sync slash commands for guild {guild.id}: {e}")
-            
+            if settings.discord_guild_id:
+                guild_object = discord.Object(id=settings.discord_guild_id)
+                bot.tree.copy_global_to(guild=guild_object)
+                synced_commands = await bot.tree.sync(guild=guild_object)
+                logger.info(
+                    "Synchronized %d slash commands to guild %d",
+                    len(synced_commands),
+                    settings.discord_guild_id,
+                )
+            else:
+                synced_commands = await bot.tree.sync()
+                logger.info(
+                    "Synchronized %d global slash commands", len(synced_commands)
+                )
             slash_commands_synced = True
-            logger.info("Slash commands synchronized globally and per-guild")
         
         if False:
             # Synchroniser tous les membres du guild au démarrage
@@ -167,16 +169,22 @@ def build_bot() -> commands.Bot:
     @commands.check(_has_staff_role)
     async def update_member_in_bdd_command(ctx: commands.Context) -> None:
         """Scanne le serveur et ajoute/met à jour tous les membres dans la base de données."""
+        if ctx.guild is None:
+            await ctx.send("Cette commande ne peut être utilisée que sur un serveur.")
+            return
         await ctx.send("🔄 Synchronisation des membres avec la base de données en cours...")
-        
-        result = await sync_all_members_to_bdd(ctx.bot)
-        
-        await ctx.send(
-            f"✅ Synchronisation terminée !\n"
-            f"- **Créés**: {result['created']} membres\n"
-            f"- **Mis à jour**: {result['updated']} membres\n"
-            f"- **Ignorés (bots)**: {result['skipped']} membres"
-        )
+
+        try:
+            result = await sync_all_members_to_bdd(ctx.guild)
+        except RuntimeError as exc:
+            await ctx.send(f"❌ Synchronisation impossible : {exc}")
+            return
+        except Exception:
+            logger.exception("Guild member synchronization failed")
+            await ctx.send("❌ Une erreur inattendue a interrompu la synchronisation.")
+            return
+
+        await ctx.send(_format_member_sync_result(result))
 
     @bot.command(name="degage")
     @commands.check(_has_staff_role)
@@ -446,6 +454,7 @@ def build_bot() -> commands.Bot:
         name="update_member_in_bdd",
         description="Scanne le serveur et synchronise tous les membres avec la base de données.",
     )
+    @app_commands.guild_only()
     async def slash_update_member_in_bdd(interaction: discord.Interaction) -> None:
         if interaction.guild is None:
             await interaction.response.send_message(
@@ -469,19 +478,28 @@ def build_bot() -> commands.Bot:
             )
             return
         
-        await interaction.response.send_message(
-            "🔄 Synchronisation des membres avec la base de données en cours...",
-            ephemeral=True,
-        )
-        
-        result = await sync_all_members_to_bdd(interaction.client)
-        
+        await interaction.response.defer(ephemeral=True, thinking=True)
+
+        try:
+            result = await sync_all_members_to_bdd(interaction.guild)
+        except RuntimeError as exc:
+            await interaction.followup.send(
+                f"❌ Synchronisation impossible : {exc}", ephemeral=True
+            )
+            return
+        except Exception:
+            logger.exception(
+                "Guild member synchronization failed for guild %d",
+                interaction.guild.id,
+            )
+            await interaction.followup.send(
+                "❌ Une erreur inattendue a interrompu la synchronisation.",
+                ephemeral=True,
+            )
+            return
+
         await interaction.followup.send(
-            f"✅ Synchronisation terminée !\n"
-            f"- **Créés**: {result['created']} membres\n"
-            f"- **Mis à jour**: {result['updated']} membres\n"
-            f"- **Ignorés (bots)**: {result['skipped']} membres",
-            ephemeral=True,
+            _format_member_sync_result(result), ephemeral=True
         )
 
     @bot.event
@@ -675,6 +693,17 @@ def _has_staff_role(ctx: commands.Context) -> bool:
 
 def _member_has_staff_role(member: discord.Member) -> bool:
     return any(role.name in STAFF_ROLE_NAME for role in member.roles)
+
+
+def _format_member_sync_result(result: dict[str, int]) -> str:
+    return (
+        "✅ Synchronisation terminée !\n"
+        f"- **Créés** : {result['created']} membres\n"
+        f"- **Mis à jour** : {result['updated']} membres\n"
+        f"- **Inchangés** : {result['unchanged']} membres\n"
+        f"- **Ignorés (bots)** : {result['skipped']} membres\n"
+        f"- **Erreurs** : {result['failed']} membres"
+    )
 
 
 def _parse_prefix_success_arguments(

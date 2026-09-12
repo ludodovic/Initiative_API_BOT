@@ -77,6 +77,17 @@ https://initiative-kourial.fr?token=TOKEN_GENERATED
 
 The bot needs Discord member and message content intents enabled in the Discord Developer Portal.
 
+Members with the `Conseiller` or `Conseiller Intérimaire` role can synchronize
+the current server with MongoDB using:
+
+```text
+/update_member_in_bdd
+```
+
+The command fetches every server member, skips bots, creates missing users, and
+updates Discord usernames, server pseudonyms, roles, and join dates. Existing
+tokens, achievements, profile information, and ticket bonuses are preserved.
+
 Configure the success validation channel:
 
 ```text
