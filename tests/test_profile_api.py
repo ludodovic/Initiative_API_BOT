@@ -141,27 +141,45 @@ class FakeSuccessCollection:
         return FakeSuccessCursor(self.successes)
 
 
+class FakeUserCollection:
+    def __init__(self, user):
+        self.user = user
+        self.find_one_args = None
+
+    async def find_one(self, *args):
+        self.find_one_args = args
+        return self.user
+
+
 class SeasonTwoTicketTests(unittest.IsolatedAsyncioTestCase):
     async def test_total_includes_bonus_ticket_count(self):
         successes = FakeSuccessCollection(
             [
-                {"difficulte": "***", "bonus_ticket_count": 2},
-                {"difficulte": "*", "bonus_ticket_count": 4},
+                {"difficulte": "***"},
+                {"difficulte": "*"},
                 {"difficulte": "**"},
-                {"difficulte": "*", "bonus_ticket_count": True},
+                {"difficulte": "*"},
             ]
         )
+        users = FakeUserCollection({"bonus_ticket_count": 6})
         with patch.object(
             user_service,
             "get_database",
-            AsyncMock(return_value={"succes2": successes}),
+            AsyncMock(return_value={"succes2": successes, "users": users}),
         ):
-            result = await user_service.get_total_season2_tickets()
+            result = await user_service.get_total_season2_tickets("valid-token")
 
         self.assertEqual(result, {"total": 13})
         self.assertEqual(
             successes.find_args,
-            ({}, {"_id": 0, "difficulte": 1, "bonus_ticket_count": 1}),
+            ({}, {"_id": 0, "difficulte": 1}),
+        )
+        self.assertEqual(
+            users.find_one_args,
+            (
+                {"token": "valid-token"},
+                {"_id": 0, "bonus_ticket_count": 1},
+            ),
         )
 
 

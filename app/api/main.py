@@ -510,9 +510,11 @@ async def api_user_picture_delete(authorization: str | None = Header(default=Non
 async def api_success2_total_tickets(
     authorization: str | None = Header(default=None),
 ) -> JSONResponse:
-    if await get_user_by_token(_extract_bearer_token(authorization)) is None:
+    result = await get_total_season2_tickets(
+        _extract_bearer_token(authorization)
+    )
+    if result is None:
         return _unauthorized()
-    result = await get_total_season2_tickets()
     return JSONResponse(status_code=status.HTTP_200_OK, content=result)
 
 
